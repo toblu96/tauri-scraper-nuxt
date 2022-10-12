@@ -1,0 +1,19 @@
+{
+  "private": true,
+  "scripts": {
+    "tauri": "tauri",
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.1.1",
+    "nuxt": "3.0.0-rc.11"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.1.0",
+    "tauri-plugin-store-api": "github:tauri-apps/tauri-plugin-store#dev"
+  }
+}
