@@ -1,6 +1,7 @@
 <script setup>
 import { invoke } from "@tauri-apps/api";
 import { Store } from "tauri-plugin-store-api";
+import { watch, watchImmediate } from "tauri-plugin-fs-watch-api";
 
 const message = ref("");
 const storeVal = ref(0);
@@ -24,6 +25,32 @@ async function setStoreValue(event) {
 async function getStoreValue(event) {
   storeVal.value = await store.entries();
 }
+
+// can also watch an array of paths
+const stopWatching = await watch(
+  "C:\\Users\\i40010702\\Desktop\\Neues Textdokument.txt",
+  { recursive: true },
+  (event) => {
+    const { type, payload } = event;
+    console.log(`Watchs 'Neues Textdokument.txt': ${type} - ${payload}`);
+  }
+);
+
+const stopRawWatcher = await watchImmediate(
+  ["C:\\Users\\i40010702\\Desktop\\wach_imed.txt"],
+  {},
+  (event) => {
+    const { path, operation, cookie } = event;
+    console.log(
+      `Watch imed 'wach_imed.txt': ${path} - ${operation} - ${cookie}`
+    );
+  }
+);
+
+onBeforeUnmount(async () => {
+  await stopWatching();
+  await stopRawWatcher();
+});
 </script>
 <template>
   <div>

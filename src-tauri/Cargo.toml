@@ -34,3 +34,7 @@ branch = "dev"
 [dependencies.tauri-plugin-autostart]
 git = "https://github.com/tauri-apps/tauri-plugin-autostart"
 branch = "dev"
+
+[dependencies.tauri-plugin-fs-watch]
+git = "https://github.com/tauri-apps/tauri-plugin-fs-watch"
+branch = "dev"
