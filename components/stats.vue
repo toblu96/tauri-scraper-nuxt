@@ -1,5 +1,6 @@
 <script setup>
 import { Store } from "tauri-plugin-store-api";
+import { enable, disable, isEnabled } from "tauri-plugin-autostart-api";
 import {
   Switch,
   SwitchDescription,
@@ -14,8 +15,20 @@ const privateAccount = ref(await store.get("settings-privateAccount"));
 const allowCommenting = ref(await store.get("settings-allowCommenting"));
 const allowMentions = ref(await store.get("settings-allowMentions"));
 
+//autostart functionality
 watchEffect(async () => {
   await store.set("settings-availableToHire", availableToHire.value);
+
+  // only change autostart state if required
+  if ((await isEnabled()) == availableToHire.value) return;
+
+  availableToHire.value ? await enable() : await disable();
+
+  console.log(
+    `Autostart changed to: ${
+      availableToHire.value
+    }, state: ${await isEnabled()}`
+  );
 });
 
 watchEffect(async () => {
@@ -48,7 +61,7 @@ watchEffect(async () => {
               as="p"
               class="text-sm font-medium text-gray-900"
               passive
-              >Available to hire</SwitchLabel
+              >Autostart App</SwitchLabel
             >
             <SwitchDescription class="text-sm text-gray-500"
               >Nulla amet tempus sit accumsan. Aliquet turpis sed sit
@@ -160,5 +173,6 @@ watchEffect(async () => {
         </SwitchGroup>
       </ul>
     </div>
+    <p class="py-8 px-6">Autostart enabled: {{ availableToHire }}</p>
   </div>
 </template>
