@@ -17,11 +17,12 @@ async function createStore(event) {
 }
 
 async function setStoreValue(event) {
-  await store.set("some-key", { value: 3 });
+  await store.clear();
+  // await store.set("some-key", { value: 3 });
 }
 
 async function getStoreValue(event) {
-  storeVal.value = await store.get("some-key");
+  storeVal.value = await store.entries();
 }
 </script>
 <template>
@@ -35,6 +36,5 @@ async function getStoreValue(event) {
     </div>
     <p>{{ message }}</p>
     {{ storeVal }}
-    <NuxtWelcome />
   </div>
 </template>

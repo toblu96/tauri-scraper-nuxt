@@ -1,101 +1,164 @@
-<template>
-  <div>
-    <h3 class="text-lg font-medium leading-6 text-gray-900">Last 30 days</h3>
+<script setup>
+import { Store } from "tauri-plugin-store-api";
+import {
+  Switch,
+  SwitchDescription,
+  SwitchGroup,
+  SwitchLabel,
+} from "@headlessui/vue";
 
-    <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      <div
-        v-for="item in stats"
-        :key="item.id"
-        class="relative overflow-hidden rounded-lg bg-white px-4 pt-5 pb-12 shadow sm:px-6 sm:pt-6"
-      >
-        <dt>
-          <div class="absolute rounded-md bg-indigo-500 p-3">
-            <component
-              :is="item.icon"
-              class="h-6 w-6 text-white"
-              aria-hidden="true"
-            />
+const store = new Store("settings.dat");
+
+const availableToHire = ref(await store.get("settings-availableToHire"));
+const privateAccount = ref(await store.get("settings-privateAccount"));
+const allowCommenting = ref(await store.get("settings-allowCommenting"));
+const allowMentions = ref(await store.get("settings-allowMentions"));
+
+watchEffect(async () => {
+  await store.set("settings-availableToHire", availableToHire.value);
+});
+
+watchEffect(async () => {
+  await store.set("settings-privateAccount", privateAccount.value);
+});
+
+watchEffect(async () => {
+  await store.set("settings-allowCommenting", allowCommenting.value);
+});
+
+watchEffect(async () => {
+  await store.set("settings-allowMentions", allowMentions.value);
+});
+</script>
+
+<template>
+  <!-- Privacy section -->
+  <div class="divide-y divide-gray-200 pt-6">
+    <div class="px-4 sm:px-6">
+      <div>
+        <h2 class="text-lg font-medium leading-6 text-gray-900">Privacy</h2>
+        <p class="mt-1 text-sm text-gray-500">
+          Ornare eu a volutpat eget vulputate. Fringilla commodo amet.
+        </p>
+      </div>
+      <ul role="list" class="mt-2 divide-y divide-gray-200">
+        <SwitchGroup as="li" class="flex items-center justify-between py-4">
+          <div class="flex flex-col">
+            <SwitchLabel
+              as="p"
+              class="text-sm font-medium text-gray-900"
+              passive
+              >Available to hire</SwitchLabel
+            >
+            <SwitchDescription class="text-sm text-gray-500"
+              >Nulla amet tempus sit accumsan. Aliquet turpis sed sit
+              lacinia.</SwitchDescription
+            >
           </div>
-          <p class="ml-16 truncate text-sm font-medium text-gray-500">
-            {{ item.name }}
-          </p>
-        </dt>
-        <dd class="ml-16 flex items-baseline pb-6 sm:pb-7">
-          <p class="text-2xl font-semibold text-gray-900">{{ item.stat }}</p>
-          <p
+          <Switch
+            v-model="availableToHire"
             :class="[
-              item.changeType === 'increase'
-                ? 'text-green-600'
-                : 'text-red-600',
-              'ml-2 flex items-baseline text-sm font-semibold',
+              availableToHire ? 'bg-teal-500' : 'bg-gray-200',
+              'relative ml-4 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2',
             ]"
           >
-            <ArrowUpIcon
-              v-if="item.changeType === 'increase'"
-              class="h-5 w-5 flex-shrink-0 self-center text-green-500"
+            <span
               aria-hidden="true"
+              :class="[
+                availableToHire ? 'translate-x-5' : 'translate-x-0',
+                'inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+              ]"
             />
-            <ArrowDownIcon
-              v-else
-              class="h-5 w-5 flex-shrink-0 self-center text-red-500"
-              aria-hidden="true"
-            />
-            <span class="sr-only">
-              {{ item.changeType === "increase" ? "Increased" : "Decreased" }}
-              by
-            </span>
-            {{ item.change }}
-          </p>
-          <div class="absolute inset-x-0 bottom-0 bg-gray-50 px-4 py-4 sm:px-6">
-            <div class="text-sm">
-              <a
-                href="#"
-                class="font-medium text-indigo-600 hover:text-indigo-500"
-              >
-                View all<span class="sr-only"> {{ item.name }} stats</span></a
-              >
-            </div>
+          </Switch>
+        </SwitchGroup>
+        <SwitchGroup as="li" class="flex items-center justify-between py-4">
+          <div class="flex flex-col">
+            <SwitchLabel
+              as="p"
+              class="text-sm font-medium text-gray-900"
+              passive
+              >Make account private</SwitchLabel
+            >
+            <SwitchDescription class="text-sm text-gray-500"
+              >Pharetra morbi dui mi mattis tellus sollicitudin cursus
+              pharetra.</SwitchDescription
+            >
           </div>
-        </dd>
-      </div>
-    </dl>
+          <Switch
+            v-model="privateAccount"
+            :class="[
+              privateAccount ? 'bg-teal-500' : 'bg-gray-200',
+              'relative ml-4 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2',
+            ]"
+          >
+            <span
+              aria-hidden="true"
+              :class="[
+                privateAccount ? 'translate-x-5' : 'translate-x-0',
+                'inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+              ]"
+            />
+          </Switch>
+        </SwitchGroup>
+        <SwitchGroup as="li" class="flex items-center justify-between py-4">
+          <div class="flex flex-col">
+            <SwitchLabel
+              as="p"
+              class="text-sm font-medium text-gray-900"
+              passive
+              >Allow commenting</SwitchLabel
+            >
+            <SwitchDescription class="text-sm text-gray-500"
+              >Integer amet, nunc hendrerit adipiscing nam. Elementum
+              ame</SwitchDescription
+            >
+          </div>
+          <Switch
+            v-model="allowCommenting"
+            :class="[
+              allowCommenting ? 'bg-teal-500' : 'bg-gray-200',
+              'relative ml-4 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2',
+            ]"
+          >
+            <span
+              aria-hidden="true"
+              :class="[
+                allowCommenting ? 'translate-x-5' : 'translate-x-0',
+                'inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+              ]"
+            />
+          </Switch>
+        </SwitchGroup>
+        <SwitchGroup as="li" class="flex items-center justify-between py-4">
+          <div class="flex flex-col">
+            <SwitchLabel
+              as="p"
+              class="text-sm font-medium text-gray-900"
+              passive
+              >Allow mentions</SwitchLabel
+            >
+            <SwitchDescription class="text-sm text-gray-500"
+              >Adipiscing est venenatis enim molestie commodo eu
+              gravid</SwitchDescription
+            >
+          </div>
+          <Switch
+            v-model="allowMentions"
+            :class="[
+              allowMentions ? 'bg-teal-500' : 'bg-gray-200',
+              'relative ml-4 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2',
+            ]"
+          >
+            <span
+              aria-hidden="true"
+              :class="[
+                allowMentions ? 'translate-x-5' : 'translate-x-0',
+                'inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+              ]"
+            />
+          </Switch>
+        </SwitchGroup>
+      </ul>
+    </div>
   </div>
 </template>
-
-<script setup>
-import { ArrowDownIcon, ArrowUpIcon } from "@heroicons/vue/20/solid";
-import {
-  CursorArrowRaysIcon,
-  EnvelopeOpenIcon,
-  UsersIcon,
-  BugAntIcon,
-  RocketLaunchIcon,
-} from "@heroicons/vue/24/outline";
-
-const stats = [
-  {
-    id: 1,
-    name: "Total Subscribers",
-    stat: "71,897",
-    icon: BugAntIcon,
-    change: "122",
-    changeType: "increase",
-  },
-  {
-    id: 2,
-    name: "Avg. Open Rate",
-    stat: "58.16%",
-    icon: RocketLaunchIcon,
-    change: "5.4%",
-    changeType: "increase",
-  },
-  {
-    id: 3,
-    name: "Avg. Click Rate",
-    stat: "24.57%",
-    icon: CursorArrowRaysIcon,
-    change: "3.2%",
-    changeType: "decrease",
-  },
-];
-</script>
