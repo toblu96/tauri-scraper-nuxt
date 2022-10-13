@@ -1,5 +1,6 @@
 <template>
-    <div>
-        hello from scrapers page
-    </div>
+  <div class="own px-6 pt-8">
+    hello from scrapers page
+    <ListScrapers />
+  </div>
 </template>

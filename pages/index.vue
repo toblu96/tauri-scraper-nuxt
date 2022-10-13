@@ -1,5 +1,3 @@
 <template>
-    <div>
-        hello from home
-    </div>
+  <div>hello from home</div>
 </template>

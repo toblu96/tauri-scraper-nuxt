@@ -45,7 +45,15 @@
       <div
         class="hidden md:flex md:min-w-0 md:flex-1 md:items-center md:justify-between"
       >
-        <h2 class="text-xl font-semibold leading-7 text-gray-900 sm:truncate sm:tracking-tight ml-6">{{sidebarNavigation[sidebarNavigation.findIndex(nav => nav.href == $route.path)].name}}</h2>
+        <h2
+          class="ml-6 text-xl font-semibold leading-7 text-gray-900 sm:truncate sm:tracking-tight"
+        >
+          {{
+            sidebarNavigation[
+              sidebarNavigation.findIndex((nav) => nav.href == $route.path)
+            ].name
+          }}
+        </h2>
       </div>
     </header>
 
@@ -75,8 +83,10 @@
       </nav>
 
       <!-- Main area -->
-      <main class="min-w-0 flex-1 border-t border-gray-200 lg:flex overflow-auto">
-        <slot/>
+      <main
+        class="min-w-0 flex-1 overflow-auto border-t border-gray-200 lg:flex"
+      >
+        <slot />
       </main>
     </div>
   </div>
@@ -92,42 +102,55 @@ import {
 
 const sidebarNavigation = ref([
   { name: "Dashboard", href: "/", icon: RectangleGroupIcon, current: true },
-  { name: "Scrapers", href: "/scrapers", icon: DocumentTextIcon, current: false },
-  { name: "Settings", href: "/settings", icon: AdjustmentsHorizontalIcon, current: false },
-])
+  {
+    name: "Scrapers",
+    href: "/scrapers",
+    icon: DocumentTextIcon,
+    current: false,
+  },
+  {
+    name: "Settings",
+    href: "/settings",
+    icon: AdjustmentsHorizontalIcon,
+    current: false,
+  },
+]);
 
 // set current page
 useRouter().beforeEach((to, from) => {
-  setActiveNav(to.path)
-})
+  setActiveNav(to.path);
+});
 onMounted(() => {
-  setActiveNav(useRoute().path)
-})
+  setActiveNav(useRoute().path);
+});
 const setActiveNav = (path) => {
   sidebarNavigation.value.forEach((nav, idx, navs) => {
     if (nav.href === path) {
-      nav.current = true
+      nav.current = true;
     } else {
-      nav.current = false
+      nav.current = false;
     }
-  })
-}
+  });
+};
 
 const navigateTo = (event) => {
-  useRouter().push(sidebarNavigation.value.filter(nav => nav.name === event.target.value)[0].href)
-}
+  useRouter().push(
+    sidebarNavigation.value.filter((nav) => nav.name === event.target.value)[0]
+      .href
+  );
+};
 </script>
 
 <style>
 html {
-  @apply h-full bg-gray-100
+  @apply h-full bg-gray-100;
 }
 
 body {
-  @apply h-full 
+  @apply h-full;
 }
 
 #__nuxt {
-  @apply h-full overflow-hidden
+  @apply h-full overflow-hidden;
 }
 </style>
