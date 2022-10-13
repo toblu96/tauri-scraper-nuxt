@@ -57,10 +57,10 @@
         class="hidden md:block md:flex-shrink-0 md:overflow-y-auto md:bg-gray-800"
       >
         <div class="relative flex w-20 flex-col space-y-3 p-3">
-          <a
+          <NuxtLink
             v-for="item in sidebarNavigation"
             :key="item.name"
-            :href="item.href"
+            :to="item.href"
             :class="[
               item.current
                 ? 'bg-gray-900 text-white'
@@ -70,7 +70,7 @@
           >
             <span class="sr-only">{{ item.name }}</span>
             <component :is="item.icon" class="h-6 w-6" aria-hidden="true" />
-          </a>
+          </NuxtLink>
         </div>
       </nav>
 
@@ -90,24 +90,31 @@ import {
   RectangleGroupIcon,
 } from "@heroicons/vue/24/outline";
 
-const sidebarNavigation = [
+const sidebarNavigation = ref([
   { name: "Dashboard", href: "/", icon: RectangleGroupIcon, current: true },
   { name: "Scrapers", href: "/scrapers", icon: DocumentTextIcon, current: false },
   { name: "Settings", href: "/settings", icon: AdjustmentsHorizontalIcon, current: false },
-];
+])
 
 // set current page
-const route = useRoute()
-sidebarNavigation.forEach((nav, idx, navs) => {
-  if (nav.href === route.path) {
-    nav.current = true
-  } else {
-    nav.current = false
-  }
+useRouter().beforeEach((to, from) => {
+  setActiveNav(to.path)
 })
+onMounted(() => {
+  setActiveNav(useRoute().path)
+})
+const setActiveNav = (path) => {
+  sidebarNavigation.value.forEach((nav, idx, navs) => {
+    if (nav.href === path) {
+      nav.current = true
+    } else {
+      nav.current = false
+    }
+  })
+}
 
 const navigateTo = (event) => {
-  useRouter().push(sidebarNavigation.filter(nav => nav.name === event.target.value)[0].href)
+  useRouter().push(sidebarNavigation.value.filter(nav => nav.name === event.target.value)[0].href)
 }
 </script>
 
