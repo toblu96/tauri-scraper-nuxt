@@ -1,11 +1,10 @@
 <script setup>
 import { invoke } from "@tauri-apps/api";
-import { Store } from "tauri-plugin-store-api";
 import { watch, watchImmediate } from "tauri-plugin-fs-watch-api";
 
 const message = ref("");
 const storeVal = ref(0);
-const store = new Store("settings.dat");
+const store = useStore();
 
 async function greet(event) {
   message.value = await invoke("greet", { name: "toubi" });

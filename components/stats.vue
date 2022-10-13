@@ -1,5 +1,4 @@
 <script setup>
-import { Store } from "tauri-plugin-store-api";
 import { enable, disable, isEnabled } from "tauri-plugin-autostart-api";
 import {
   Switch,
@@ -8,7 +7,7 @@ import {
   SwitchLabel,
 } from "@headlessui/vue";
 
-const store = new Store("settings.dat");
+const store = useStore();
 
 const availableToHire = ref(await store.get("settings-availableToHire"));
 const privateAccount = ref(await store.get("settings-privateAccount"));
