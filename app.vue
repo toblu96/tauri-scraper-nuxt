@@ -1,12 +1,19 @@
 <script setup>
 import { invoke } from "@tauri-apps/api";
-import { watch, watchImmediate } from "tauri-plugin-fs-watch-api";
+
+const { $addFileWatcherConfig } = useNuxtApp();
 
 const message = ref("");
 const storeVal = ref(0);
 const store = useStore();
 
 async function greet(event) {
+  $addFileWatcherConfig({
+    id: 3456,
+    enabled: false,
+    name: "own value",
+    path: "nope",
+  });
   message.value = await invoke("greet", { name: "toubi" });
 }
 
@@ -24,35 +31,10 @@ async function setStoreValue(event) {
 async function getStoreValue(event) {
   storeVal.value = await store.entries();
 }
-
-// can also watch an array of paths
-const stopWatching = await watch(
-  "C:\\Users\\i40010702\\Desktop\\Neues Textdokument.txt",
-  { recursive: true },
-  (event) => {
-    const { type, payload } = event;
-    console.log(`Watchs 'Neues Textdokument.txt': ${type} - ${payload}`);
-  }
-);
-
-const stopRawWatcher = await watchImmediate(
-  ["C:\\Users\\i40010702\\Desktop\\wach_imed.txt"],
-  {},
-  (event) => {
-    const { path, operation, cookie } = event;
-    console.log(
-      `Watch imed 'wach_imed.txt': ${path} - ${operation} - ${cookie}`
-    );
-  }
-);
-
-onBeforeUnmount(async () => {
-  await stopWatching();
-  await stopRawWatcher();
-});
 </script>
 <template>
   <div>
+    {{ $listFileWatchers() }}
     <Stats />
     <button @click="greet()">Greet</button>
     <button @click="createStore()">Create Store</button>
