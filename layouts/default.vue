@@ -45,7 +45,7 @@
       <div
         class="hidden md:flex md:min-w-0 md:flex-1 md:items-center md:justify-between"
       >
-        <h2 class="text-xl font-semibold leading-7 text-gray-900 sm:truncate  sm:tracking-tight ml-4">{{sidebarNavigation[sidebarNavigation.findIndex(nav => nav.href == $route.path)].name}}</h2>
+        <h2 class="text-xl font-semibold leading-7 text-gray-900 sm:truncate sm:tracking-tight ml-6">{{sidebarNavigation[sidebarNavigation.findIndex(nav => nav.href == $route.path)].name}}</h2>
       </div>
     </header>
 
@@ -75,8 +75,8 @@
       </nav>
 
       <!-- Main area -->
-      <main class="min-w-0 flex-1 border-t border-gray-200 lg:flex p-4 overflow-auto">
-        <NuxtPage />
+      <main class="min-w-0 flex-1 border-t border-gray-200 lg:flex overflow-auto">
+        <slot/>
       </main>
     </div>
   </div>
