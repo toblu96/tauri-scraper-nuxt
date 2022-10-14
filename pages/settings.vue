@@ -28,7 +28,7 @@ watchEffect(async () => {
 </script>
 
 <template>
-  <div class="divide-y divide-gray-200 pt-8">
+  <div class="space-y-6 divide-y divide-gray-200 pt-8">
     <div class="px-6">
       <div>
         <h2 class="text-lg font-medium leading-6 text-gray-900">
@@ -71,5 +71,10 @@ watchEffect(async () => {
         </SwitchGroup>
       </ul>
     </div>
+    <section class="space-y-4 p-6">
+      <h2 class="text-lg font-medium leading-6 text-gray-900">Danger Zone</h2>
+
+      <ActionPanelSettingsDangerZone />
+    </section>
   </div>
 </template>
