@@ -1,6 +1,10 @@
+<script setup>
+import { useScrapersStore } from "~~/store/scrapers";
+const store = useScrapersStore();
+</script>
+
 <template>
   <div class="own px-6 pt-8">
-    hello from scrapers page
-    <ListScrapers />
+    <TableScrapers :scrapers="store.fileScrapers" />
   </div>
 </template>

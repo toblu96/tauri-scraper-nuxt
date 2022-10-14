@@ -84,7 +84,7 @@
 
       <!-- Main area -->
       <main
-        class="min-w-0 flex-1 overflow-auto border-t border-gray-200 lg:flex"
+        class="min-w-0 flex-1 overflow-y-auto overflow-x-hidden border-t border-gray-200"
       >
         <slot />
       </main>

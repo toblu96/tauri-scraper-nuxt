@@ -1,6 +1,6 @@
 import { watch } from "tauri-plugin-fs-watch-api";
 
-const store = useStore()
+const store = useTauriStore()
 
 interface WatchConfig {
     id: number

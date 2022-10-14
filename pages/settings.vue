@@ -7,7 +7,7 @@ import {
   SwitchLabel,
 } from "@headlessui/vue";
 
-const store = useStore();
+const store = useTauriStore();
 const autostartEnabled = ref(await store.get("settings-autostartEnabled"));
 
 //autostart functionality
