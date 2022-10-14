@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Ref, ref, computed } from "vue";
 import { Switch } from "@headlessui/vue";
-import { useScrapersStore } from "~~/store/scrapers";
+import { useScraperStore } from "~~/stores/scrapers";
 
-const scraperStore = useScrapersStore();
+const scraperStore = useScraperStore();
 
 type ScraperProps = {
   id: string;

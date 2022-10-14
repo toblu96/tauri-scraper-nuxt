@@ -1,6 +1,6 @@
 <script setup>
-import { useScrapersStore } from "~~/store/scrapers";
-const store = useScrapersStore();
+import { useScraperStore } from "~~/stores/scrapers";
+const store = useScraperStore();
 </script>
 
 <template>

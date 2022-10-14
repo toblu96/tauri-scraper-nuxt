@@ -1,4 +1,3 @@
-// store/filters.js
 import { defineStore } from 'pinia'
 
 interface State {
@@ -19,6 +18,8 @@ type ScraperProps = {
   path: string;
 };
 
+const tauriStore = useTauriStore();
+
 const generateUUID = () => {
   let
     d = new Date().getTime(),
@@ -36,14 +37,22 @@ const generateUUID = () => {
   });
 };
 
-export const useScrapersStore = defineStore('scraper-store', {
+await tauriStore.set("settings-file-scrapers-test", true)
+
+export const useScraperStore = defineStore('scraper-store', {
   state: (): State => ({
-    fileScrapers: [
-      { "id": "82e2ea3c-d0b7-4b06-b2c6-f5018009bae6", "name": "SC1", "enabled": true, "path": "C:\Users\i40010702\Desktop\Neues Textdokument.txt" },
-      { "id": "070be24a-5dca-4081-ecc5-b82f63ee4368", "name": "SC2", "enabled": false, "path": "C:\Users\i40010702\Desktop\wach_imed.txt" }
-    ]
+    fileScrapers: []
   }),
   actions: {
+    async init() {
+      console.log("init scraper store")
+      const data = await tauriStore.get("settings-file-scrapers")
+      this.fileScrapers = data || []
+    },
+    async tauriSave() {
+      console.log("saved to tauri")
+      await tauriStore.set("settings-file-scrapers", this.fileScrapers)
+    },
     addFileScraper(scraper: ScraperProps) {
       this.fileScrapers.push({ id: generateUUID(), ...scraper })
     },
