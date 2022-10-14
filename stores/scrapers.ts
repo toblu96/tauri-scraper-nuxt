@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore, acceptHMRUpdate } from 'pinia'
 
 interface State {
   fileScrapers: Scraper[]
@@ -37,8 +37,6 @@ const generateUUID = () => {
   });
 };
 
-await tauriStore.set("settings-file-scrapers-test", true)
-
 export const useScraperStore = defineStore('scraper-store', {
   state: (): State => ({
     fileScrapers: []
@@ -71,3 +69,8 @@ export const useScraperStore = defineStore('scraper-store', {
     scraperList: state => state.fileScrapers,
   },
 })
+
+// enable hot module replacement
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useScraperStore, import.meta.hot))
+}
