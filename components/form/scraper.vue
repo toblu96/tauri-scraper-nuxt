@@ -44,7 +44,7 @@ const changeFilePath = async (event) => {
               <label
                 for="scraper-name"
                 class="block text-sm font-medium text-gray-700"
-                >Scraper Name</label
+                >Scraper name</label
               >
               <input
                 type="text"
