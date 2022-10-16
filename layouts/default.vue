@@ -145,7 +145,7 @@ const navigateTo = (event) => {
 
 <style>
 html {
-  @apply h-full bg-gray-100;
+  @apply h-full overflow-hidden bg-gray-100;
 }
 
 body {
