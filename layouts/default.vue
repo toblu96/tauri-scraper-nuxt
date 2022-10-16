@@ -51,7 +51,7 @@
           {{
             sidebarNavigation[
               sidebarNavigation.findIndex((nav) => nav.href == $route.path)
-            ].name
+            ]?.name
           }}
         </h2>
       </div>
@@ -92,7 +92,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import {
   AdjustmentsHorizontalIcon,
@@ -123,14 +123,16 @@ useRouter().beforeEach((to, from) => {
 onMounted(() => {
   setActiveNav(useRoute().path);
 });
-const setActiveNav = (path) => {
-  sidebarNavigation.value.forEach((nav, idx, navs) => {
-    if (nav.href === path) {
-      nav.current = true;
+const setActiveNav = (path: string) => {
+  for (const nav of sidebarNavigation.value) {
+    // catch home route
+    if (path === "/") {
+      nav.current = nav.href === "/" ? true : false;
     } else {
-      nav.current = false;
+      nav.current = path.startsWith(nav.href) ? true : false;
+      if (nav.href === "/") nav.current = false;
     }
-  });
+  }
 };
 
 const navigateTo = (event) => {
