@@ -50,7 +50,7 @@
         >
           {{
             sidebarNavigation[
-              sidebarNavigation.findIndex((nav) => nav.href == $route.path)
+              sidebarNavigation.findIndex((nav) => nav.current === true)
             ]?.name
           }}
         </h2>
