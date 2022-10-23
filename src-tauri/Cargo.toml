@@ -38,3 +38,6 @@ branch = "dev"
 [dependencies.tauri-plugin-fs-watch]
 git = "https://github.com/tauri-apps/tauri-plugin-fs-watch"
 branch = "dev"
+
+[dependencies.tauri-plugin-mqtt-client]
+path = "./plugins/tauri-plugin-mqtt-client"
