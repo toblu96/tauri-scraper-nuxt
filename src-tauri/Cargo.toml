@@ -41,3 +41,6 @@ branch = "dev"
 
 [dependencies.tauri-plugin-mqtt-client]
 path = "./plugins/tauri-plugin-mqtt-client"
+
+[dependencies.tauri-plugin-file-version]
+path = "./plugins/tauri-plugin-file-version"

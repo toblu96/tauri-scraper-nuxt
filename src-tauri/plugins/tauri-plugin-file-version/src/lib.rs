@@ -1,22 +1,27 @@
-
 use tauri::{
-    async_runtime::Mutex,
     plugin::{Builder, TauriPlugin},
-    AppHandle, Manager, Runtime, State,
+    Runtime,
 };
 
 #[tauri::command]
-// this will be accessible with `invoke('plugin:awesome|initialize')`.
-// where `awesome` is the plugin name.
-async fn getFileVersion(path: String) -> String {
-     // version_info::get_file_version("C:\\Program Files\\Microsoft VS Code\\libEGL.dll")
-     let (b1, b2, b3, b4) =
-     version_info::get_file_version("C:\\Program Files\\Microsoft VS Code\\Code.exe").unwrap();
-    println!("File version is {}.{}.{}.{}", b1, b2, b3, b4);
+/**
+Get the current file version from a .exe or .dll file.
+*/
+async fn get_file_version(path: String) -> String {
+    // version_info::get_file_version("C:\\Program Files\\Microsoft VS Code\\libEGL.dll")
+    // version_info::get_file_version("C:\\Program Files\\Microsoft VS Code\\Code.exe")
+
+    // make sure path has double backslashes on windows
+    let version = version_info::get_file_version(&path);
+
+    match version {
+        Some((a, b, c, d)) => return format!("{}.{}.{}.{}", a, b, c, d),
+        None => return "Could not read version.".to_string(),
+    }
 }
 
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("file-version")
-        .invoke_handler(tauri::generate_handler![getFileVersion])
+        .invoke_handler(tauri::generate_handler![get_file_version])
         .build()
 }

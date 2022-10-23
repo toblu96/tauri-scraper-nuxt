@@ -53,6 +53,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",
+ "tauri-plugin-file-version",
  "tauri-plugin-fs-watch",
  "tauri-plugin-mqtt-client",
  "tauri-plugin-store",
@@ -3185,6 +3186,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-file-version"
+version = "0.0.1"
+dependencies = [
+ "tauri",
+ "version_info",
+]
+
+[[package]]
 name = "tauri-plugin-fs-watch"
 version = "0.0.0"
 source = "git+https://github.com/tauri-apps/tauri-plugin-fs-watch?branch=dev#44e0bb889b78cd6e6fa6255b3d39b8637cda98bd"
@@ -3617,6 +3626,15 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "version_info"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cb7678f85a3b77528a842d4d47b289bc2867db8e31c79c672641c741ce9eddd"
+dependencies = [
+ "winapi 0.3.9",
+]
 
 [[package]]
 name = "walkdir"

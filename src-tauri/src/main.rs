@@ -21,6 +21,7 @@ fn main() {
         ))
         .plugin(Watcher::default())
         .plugin(tauri_plugin_mqtt_client::init())
+        .plugin(tauri_plugin_file_version::init())
         .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
