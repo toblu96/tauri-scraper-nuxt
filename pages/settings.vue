@@ -72,6 +72,12 @@ watchEffect(async () => {
       </ul>
     </div>
     <section class="space-y-4 p-6">
+      <h2 class="text-lg font-medium leading-6 text-gray-900">
+        Communication Settings
+      </h2>
+      <FormSettingsMqttBroker />
+    </section>
+    <section class="space-y-4 p-6">
       <h2 class="text-lg font-medium leading-6 text-gray-900">Danger Zone</h2>
 
       <ActionPanelSettingsDangerZone />

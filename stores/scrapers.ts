@@ -2,6 +2,7 @@ import { defineStore, acceptHMRUpdate } from 'pinia'
 
 interface State {
   fileScrapers: Scraper[]
+  mqttBrokerSettings: MqttBroker
 }
 
 type Scraper = {
@@ -17,6 +18,18 @@ type ScraperProps = {
   lastUpdate?: string;
   path: string;
 };
+
+enum MqttProtocol {
+  mqtt = "mqtt://",
+  mqtts = "mqtts://"
+}
+
+type MqttBroker = {
+  clientId: string
+  host: string
+  port: number
+  protocol: MqttProtocol
+}
 
 const tauriStore = useTauriStore();
 
@@ -39,17 +52,32 @@ const generateUUID = () => {
 
 export const useScraperStore = defineStore('scraper-store', {
   state: (): State => ({
-    fileScrapers: []
+    fileScrapers: [],
+    mqttBrokerSettings: {
+      clientId: "tauri-mqtt-client",
+      host: "localhost",
+      port: 1883,
+      protocol: MqttProtocol.mqtt
+    }
   }),
   actions: {
     async init() {
       console.log("init scraper store")
       const data = await tauriStore.get("settings-file-scrapers")
       this.fileScrapers = data || []
+      // broker settings
+      const broker = await tauriStore.get("settings-file-mqtt-broker")
+      this.mqttBrokerSettings = broker || {
+        clientId: "tauri-mqtt-client",
+        host: "localhost",
+        port: 1883,
+        protocol: MqttProtocol.mqtt
+      }
     },
     async tauriSave() {
       console.log("saved to tauri")
       await tauriStore.set("settings-file-scrapers", this.fileScrapers)
+      await tauriStore.set("settings-file-mqtt-broker", this.mqttBrokerSettings)
     },
     addFileScraper(scraper: ScraperProps) {
       this.fileScrapers.push({ id: generateUUID(), ...scraper })
@@ -64,9 +92,14 @@ export const useScraperStore = defineStore('scraper-store', {
         }
       }
     },
+    toggleBrokerSecurity() {
+      console.log(this.mqttBrokerSettings.protocol)
+      this.mqttBrokerSettings.protocol = this.mqttBrokerSettings.protocol === MqttProtocol.mqtt ? MqttProtocol.mqtts : MqttProtocol.mqtt
+    }
   },
   getters: {
     scraperList: state => state.fileScrapers,
+    mqttBroker: state => state.mqttBrokerSettings
   },
 })
 
