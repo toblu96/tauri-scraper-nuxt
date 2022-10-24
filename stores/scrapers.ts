@@ -14,7 +14,9 @@ type Scraper = {
   id: string;
   name: string;
   enabled: boolean;
-  lastUpdate?: string;
+  lastUpdateUTC?: string; // timestamp UTC
+  updateState?: string; // status of update - e.g. could not read | successful
+  lastVersion?: string; // latest file version
   path: string;
   stop(): Promise<void>
 };
@@ -66,11 +68,23 @@ const registerFileWatcher = async (scraper: Scraper) => {
     scraper.stop = await watch(
       scraper.path,
       { recursive: true },
-      (event) => {
+      async (event) => {
         const { type, payload } = event;
-        if (["Create", "Write", "Chmod", "Remove", "Rename", "Rescan", "Error"].includes(type))
+        if (["Create", "Write", "Chmod", "Remove", "Rename", "Rescan", "Error"].includes(type)) {
           console.log(`Watch ${scraper.name}: ${type} - ${payload}`);
-        // emit tauri event to backend (handle fs in frontend?)
+          scraper.lastUpdateUTC = new Date().toISOString()
+          // TODO: read file version (invoke tauri plugin)
+          let version = await invoke("plugin:file-version|get_file_version", { path: scraper.path })
+          if (version === 'Could not read version.') {
+            scraper.updateState = `Could not read file version from file '${scraper.path}'.`
+            return
+          }
+          console.log("get version: ", scraper.updateState)
+          // TODO: save last update value to local store
+          scraper.lastVersion = version as string
+          scraper.updateState = "Successful"
+          // TODO: publish to mqtt
+        }
       }
     )
   } catch (error) {
@@ -141,7 +155,7 @@ export const useScraperStore = defineStore('scraper-store', {
         });
       }
       // renew watcher if settings change
-      if (event.events.target.stop && !['enabled', 'stop'].includes(event.events.key)) { // prevent race condition
+      if (event.events.target.stop && ['path', 'name'].includes(event.events.key)) { // only reload on certain settings
         let scraper: Scraper = this.fileScrapers.filter(scraper => scraper.id === event.events.target.id)[0];
         if (scraper.enabled) {
           await unregisterFileWatcher(scraper)
