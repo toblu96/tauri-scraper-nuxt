@@ -74,8 +74,8 @@ export const useScraperStore = defineStore('scraper-store', {
         protocol: MqttProtocol.mqtt
       }
     },
-    async tauriSave() {
-      console.log("saved to tauri")
+    async tauriSave(event) {
+      console.log("saved to tauri", event)
       await tauriStore.set("settings-file-scrapers", this.fileScrapers)
       await tauriStore.set("settings-file-mqtt-broker", this.mqttBrokerSettings)
     },

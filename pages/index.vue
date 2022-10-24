@@ -4,8 +4,15 @@ import { open } from "@tauri-apps/api/dialog";
 import { appDir } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api";
 
+import { useScraperStore } from "~~/stores/scrapers";
+const store = useScraperStore();
+
 const test = async () => {
-  await invoke("plugin:mqtt-client|connect");
+  await invoke("plugin:mqtt-client|connect", {
+    clientId: store.mqttBroker.clientId,
+    host: store.mqttBroker.host,
+    port: store.mqttBroker.port,
+  });
 };
 
 const path = ref("");

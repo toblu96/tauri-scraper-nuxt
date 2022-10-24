@@ -6,7 +6,6 @@ const store = useScraperStore();
 const broker = store.mqttBroker;
 
 const secureBroker = ref(false);
-console.log(broker.protocol);
 secureBroker.value = broker.protocol === "mqtts://" ? true : false;
 </script>
 <template>
