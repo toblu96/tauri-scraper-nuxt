@@ -4,7 +4,7 @@ use std::time::Duration;
 use tauri::{
     async_runtime::{spawn, JoinHandle, Mutex},
     plugin::{Builder, TauriPlugin},
-    Manager, Runtime, State,
+    AppHandle, Manager, Runtime, State,
 };
 
 struct MQTTConnection {
@@ -16,7 +16,8 @@ struct MQTTConnection {
 /**
  * connect to mqtt broker
  */
-async fn connect(
+async fn connect<R: Runtime>(
+    _app: AppHandle<R>,
     mqtt: State<'_, MQTTConnection>,
     client_id: String,
     host: String,
@@ -29,6 +30,8 @@ async fn connect(
         println!("Task does already exist, delete and replace with new one.");
         running_task.as_ref().unwrap().abort();
         *running_task = None;
+        // reset connection state in frontend store
+        _app.emit_all("plugin:mqtt//connected", false).unwrap();
     }
     drop(running_task);
 
@@ -44,8 +47,10 @@ async fn connect(
         loop {
             match eventloop.poll().await {
                 // set client connected status
-                Ok(Event::Incoming(Incoming::PingResp)) => {
+                Ok(Event::Incoming(Incoming::PingResp))
+                | Ok(Event::Incoming(Incoming::ConnAck(_))) => {
                     println!("Connection successful");
+                    _app.emit_all("plugin:mqtt//connected", true).unwrap();
                 }
                 Ok(Event::Incoming(Incoming::Publish(p))) => {
                     println!("Topic: {}, Payload: {:?}", p.topic, p.payload);
@@ -57,6 +62,7 @@ async fn connect(
                 Ok(Event::Outgoing(o)) => println!("Outgoing = {:?}", o),
                 Err(e) => {
                     println!("Error = {:?}", e);
+                    _app.emit_all("plugin:mqtt//connected", false).unwrap();
                 }
             }
         }
@@ -70,7 +76,10 @@ async fn connect(
 }
 
 #[tauri::command]
-async fn publish(mqtt: State<'_, MQTTConnection>) -> Result<(), ()> {
+async fn publish<R: Runtime>(
+    _app: AppHandle<R>,
+    mqtt: State<'_, MQTTConnection>,
+) -> Result<(), ()> {
     println!("publish");
 
     //TODO: Handle None in mqtt state

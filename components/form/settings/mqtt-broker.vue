@@ -12,13 +12,34 @@ secureBroker.value = broker.protocol === "mqtts://" ? true : false;
   <form class="space-y-6" action="#" method="POST">
     <div class="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
       <div class="md:grid md:grid-cols-3 md:gap-6">
-        <div class="md:col-span-1">
-          <h3 class="text-lg font-medium leading-6 text-gray-900">
-            MQTT Broker
-          </h3>
-          <p class="mt-1 text-sm text-gray-500">
-            Specify broker settings for sending file version data.
-          </p>
+        <div class="relative w-full md:col-span-1">
+          <div>
+            <h3 class="text-lg font-medium leading-6 text-gray-900">
+              MQTT Broker
+            </h3>
+            <p class="mt-1 text-sm text-gray-500">
+              Specify broker settings for sending file version data.
+            </p>
+          </div>
+          <span
+            v-if="store.mqttBrokerState.connected"
+            class="absolute bottom-0 inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800"
+          >
+            <svg
+              class="-ml-0.5 mr-1.5 h-2 w-2 animate-pulse text-green-400"
+              fill="currentColor"
+              viewBox="0 0 8 8"
+            >
+              <circle cx="4" cy="4" r="3" />
+            </svg>
+            Connected
+          </span>
+          <span
+            v-else
+            class="absolute bottom-0 inline-flex items-center rounded-md bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-800"
+          >
+            Connection Error
+          </span>
         </div>
         <div class="mt-5 md:col-span-2 md:mt-0">
           <div class="grid grid-cols-6 gap-6">

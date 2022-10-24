@@ -1,8 +1,11 @@
 import { defineStore, acceptHMRUpdate } from 'pinia'
+import { listen } from '@tauri-apps/api/event'
+import { invoke } from '@tauri-apps/api/tauri'
 
 interface State {
   fileScrapers: Scraper[]
   mqttBrokerSettings: MqttBroker
+  mqttBrokerState: MqttBrokerState
 }
 
 type Scraper = {
@@ -29,6 +32,10 @@ type MqttBroker = {
   host: string
   port: number
   protocol: MqttProtocol
+}
+
+type MqttBrokerState = {
+  connected: boolean
 }
 
 const tauriStore = useTauriStore();
@@ -58,14 +65,18 @@ export const useScraperStore = defineStore('scraper-store', {
       host: "localhost",
       port: 1883,
       protocol: MqttProtocol.mqtt
+    },
+    mqttBrokerState: {
+      connected: false
     }
   }),
   actions: {
     async init() {
       console.log("init scraper store")
+      // initial scraper settings
       const data = await tauriStore.get("settings-file-scrapers")
       this.fileScrapers = data || []
-      // broker settings
+      // initial broker settings
       const broker = await tauriStore.get("settings-file-mqtt-broker")
       this.mqttBrokerSettings = broker || {
         clientId: "tauri-mqtt-client",
@@ -73,11 +84,23 @@ export const useScraperStore = defineStore('scraper-store', {
         port: 1883,
         protocol: MqttProtocol.mqtt
       }
+      // backend events
+      await listen("plugin:mqtt//connected", (event) => {
+        this.mqttBrokerState.connected = event.payload;
+      });
     },
     async tauriSave(event) {
       console.log("saved to tauri", event)
       await tauriStore.set("settings-file-scrapers", this.fileScrapers)
       await tauriStore.set("settings-file-mqtt-broker", this.mqttBrokerSettings)
+      // reconnect broker if settings change
+      if (event.events.target.clientId) {
+        await invoke("plugin:mqtt-client|connect", {
+          clientId: this.mqttBroker.clientId,
+          host: this.mqttBroker.host,
+          port: this.mqttBroker.port,
+        });
+      }
     },
     addFileScraper(scraper: ScraperProps) {
       this.fileScrapers.push({ id: generateUUID(), ...scraper })
@@ -99,7 +122,8 @@ export const useScraperStore = defineStore('scraper-store', {
   },
   getters: {
     scraperList: state => state.fileScrapers,
-    mqttBroker: state => state.mqttBrokerSettings
+    mqttBroker: state => state.mqttBrokerSettings,
+    // brokerStateConnected: state => state.mqttBrokerState.connected
   },
 })
 
