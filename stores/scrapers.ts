@@ -84,6 +84,12 @@ export const useScraperStore = defineStore('scraper-store', {
         port: 1883,
         protocol: MqttProtocol.mqtt
       }
+      // connect broker
+      await invoke("plugin:mqtt-client|connect", {
+        clientId: this.mqttBroker.clientId,
+        host: this.mqttBroker.host,
+        port: this.mqttBroker.port,
+      });
       // backend events
       await listen("plugin:mqtt//connected", (event) => {
         this.mqttBrokerState.connected = event.payload;
