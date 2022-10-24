@@ -1,6 +1,8 @@
 import { defineStore, acceptHMRUpdate } from 'pinia'
 import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/tauri'
+import { message } from '@tauri-apps/api/dialog';
+import { watch } from "tauri-plugin-fs-watch-api";
 
 interface State {
   fileScrapers: Scraper[]
@@ -14,6 +16,7 @@ type Scraper = {
   enabled: boolean;
   lastUpdate?: string;
   path: string;
+  stop(): Promise<void>
 };
 type ScraperProps = {
   name: string;
@@ -57,6 +60,31 @@ const generateUUID = () => {
   });
 };
 
+const registerFileWatcher = async (scraper: Scraper) => {
+  console.log("start scraper with name ", scraper.name)
+  try {
+    scraper.stop = await watch(
+      scraper.path,
+      { recursive: true },
+      (event) => {
+        const { type, payload } = event;
+        if (["Create", "Write", "Chmod", "Remove", "Rename", "Rescan", "Error"].includes(type))
+          console.log(`Watch ${scraper.name}: ${type} - ${payload}`);
+        // emit tauri event to backend (handle fs in frontend?)
+      }
+    )
+  } catch (error) {
+    message(`Could not activate file watcher: \n${error}`, { title: 'Tauri | Enable file scraper', type: 'warning' })
+    scraper.enabled = false
+  }
+
+}
+
+const unregisterFileWatcher = async (scraper: Scraper) => {
+  console.log("stop scraper with name ", scraper.name)
+  await scraper.stop()
+}
+
 export const useScraperStore = defineStore('scraper-store', {
   state: (): State => ({
     fileScrapers: [],
@@ -90,7 +118,12 @@ export const useScraperStore = defineStore('scraper-store', {
         host: this.mqttBroker.host,
         port: this.mqttBroker.port,
       });
-      // backend events
+      // start enabled file watchers
+      for (const scraper of this.fileScrapers) {
+        if (scraper.enabled)
+          await registerFileWatcher(scraper)
+      }
+      // register tauri events
       await listen("plugin:mqtt//connected", (event) => {
         this.mqttBrokerState.connected = event.payload;
       });
@@ -107,6 +140,14 @@ export const useScraperStore = defineStore('scraper-store', {
           port: this.mqttBroker.port,
         });
       }
+      // renew watcher if settings change
+      if (event.events.target.stop && !['enabled', 'stop'].includes(event.events.key)) { // prevent race condition
+        let scraper: Scraper = this.fileScrapers.filter(scraper => scraper.id === event.events.target.id)[0];
+        if (scraper.enabled) {
+          await unregisterFileWatcher(scraper)
+          await registerFileWatcher(scraper)
+        }
+      }
     },
     addFileScraper(scraper: ScraperProps) {
       this.fileScrapers.push({ id: generateUUID(), ...scraper })
@@ -114,12 +155,21 @@ export const useScraperStore = defineStore('scraper-store', {
     removeFileScraper(id: string) {
       this.fileScrapers.splice(this.fileScrapers.findIndex((obj) => obj.id === id), 1)
     },
-    toggleEnableState(id: string) {
+    async toggleEnableState(id: string) {
       for (const scraper of this.fileScrapers) {
         if (scraper.id === id) {
-          scraper.enable = !scraper.enable
+          scraper.enabled = !scraper.enabled
         }
       }
+
+      // handle file watcher
+      let scraper: Scraper = this.fileScrapers.filter(scraper => scraper.id === id)[0];
+      if (scraper.enabled) {
+        await registerFileWatcher(scraper)
+      } else {
+        await unregisterFileWatcher(scraper)
+      }
+
     },
     toggleBrokerSecurity() {
       console.log(this.mqttBrokerSettings.protocol)
