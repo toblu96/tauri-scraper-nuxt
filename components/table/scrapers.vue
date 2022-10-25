@@ -30,6 +30,7 @@ const addScraper = () => {
     enabled: false,
     name: "quick scraper",
     path: "none",
+    mqttTopic: "/eh/test/1234",
   });
 };
 const deleteScrapers = () => {

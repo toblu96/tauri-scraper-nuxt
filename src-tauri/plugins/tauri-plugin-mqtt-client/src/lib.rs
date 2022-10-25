@@ -79,30 +79,34 @@ async fn connect<R: Runtime>(
 async fn publish<R: Runtime>(
     _app: AppHandle<R>,
     mqtt: State<'_, MQTTConnection>,
-) -> Result<(), ()> {
+    topic: String,
+    payload: serde_json::Value
+) -> Result<(), String> {
     println!("publish");
 
     //TODO: Handle None in mqtt state
 
-    println!("{:?}", *mqtt.client);
-    println!("{:?}", mqtt.client.lock().await.as_ref().unwrap());
+    println!("{}", topic);
+    println!("{}", payload);
 
     // let client = *mqtt.client.lock().await.clone().unwrap();
-    mqtt.client
+    let resp = mqtt.client
         .lock()
         .await
         .as_ref()
         .unwrap()
         .publish(
-            "eh/test/tbl/hello",
+            &topic,
             QoS::AtMostOnce,
             false,
-            format!("hello from tauri publish method :)"),
+            payload.to_string(),
         )
-        .await
-        .expect("Could not publish message");
+        .await;
 
-    Ok(())
+    match resp {
+        Ok(()) => { return Ok(());}
+        Err(e) => {return Err(e.to_string())}
+    }
 }
 
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
