@@ -1,4 +1,4 @@
-use rumqttc::{AsyncClient, Event, Incoming, MqttOptions, Outgoing, QoS};
+use rumqttc::{AsyncClient, Event, Incoming, MqttOptions, Outgoing, QoS, ConnectionError, Transport};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{
@@ -6,6 +6,8 @@ use tauri::{
     plugin::{Builder, TauriPlugin},
     AppHandle, Manager, Runtime, State,
 };
+use rustls::{RootCertStore, Certificate, ClientConfig};
+use rustls_native_certs::load_native_certs;
 
 struct MQTTConnection {
     client: Arc<Mutex<Option<AsyncClient>>>,
@@ -22,6 +24,9 @@ async fn connect<R: Runtime>(
     client_id: String,
     host: String,
     port: u16,
+    protocol: String,
+    username: String,
+    password: String
 ) -> Result<(), ()> {
     // check if there is already a client task running and close it
     let mut running_task = mqtt.event_loop_task.lock().await;
@@ -38,7 +43,31 @@ async fn connect<R: Runtime>(
     // create mqtt client
     let mut mqttoptions = MqttOptions::new(&client_id, &host, port);
     mqttoptions.set_keep_alive(Duration::from_secs(5));
-    // mqttoptions.set_credentials("admin", "public");
+
+    // use auth if provided
+    if !&username.is_empty() && !&password.is_empty() {
+        println!("use auth");
+        mqttoptions.set_credentials(&username, &password);
+    }
+
+    println!("{}", protocol);
+    println!("{}", username);
+    println!("{}", password);
+
+    // Use rustls-native-certs to load root certificates from the operating system.
+    if &protocol == "mqtts://" {
+        let mut root_cert_store = RootCertStore::empty();
+        for cert in load_native_certs().expect("could not load platform certs") {
+            root_cert_store.add(&Certificate(cert.0)).expect("could not add cert to temporary application store.");
+        }
+        
+        let client_config = ClientConfig::builder()
+        .with_safe_defaults()
+        .with_root_certificates(root_cert_store)
+        .with_no_client_auth();
+        
+        mqttoptions.set_transport(Transport::tls_with_config(client_config.into()));
+    }
 
     let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
 
@@ -63,6 +92,23 @@ async fn connect<R: Runtime>(
                 Err(e) => {
                     println!("Error = {:?}", e);
                     _app.emit_all("plugin:mqtt//connected", false).unwrap();
+
+                    match e {
+                        ConnectionError::Io(e) => {
+                            // prevent filling log with unnecessary socket errors, e.g.:
+                            // Io(Custom { kind: ConnectionAborted, error: "connection closed by peer" })
+                            // Io(Custom { kind: InvalidData, error: "Promised boundary crossed: 256" })
+                            println!("End eventloop task due to: {}", e);
+                            break;
+                        },
+                        ConnectionError::ConnectionRefused(e) => {
+                            // prevent filling log with unnecessary auth errors, e.g.:
+                            // ConnectionRefused(NotAuthorized)
+                            println!("End eventloop task due to: {:?}", e);
+                            break;
+                        },
+                        _ => {}
+                    }
                 }
             }
         }

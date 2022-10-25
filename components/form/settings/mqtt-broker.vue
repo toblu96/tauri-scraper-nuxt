@@ -62,9 +62,12 @@ secureBroker.value = broker.protocol === "mqtts://" ? true : false;
               <label
                 for="broker-secure"
                 class="block text-sm font-medium text-gray-700"
-                >Secure</label
+                >SSL/TLS</label
               >
-              <div class="place-self-stretch">
+              <div
+                class="place-self-stretch"
+                title="Load certificates from server"
+              >
                 <Switch
                   id="broker-secure"
                   v-model="secureBroker"
@@ -123,6 +126,44 @@ secureBroker.value = broker.protocol === "mqtts://" ? true : false;
                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     placeholder="1883"
                     v-model="broker.port"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="col-span-3">
+              <div>
+                <label
+                  for="broker-username"
+                  class="block text-sm font-medium text-gray-700"
+                  >Username</label
+                >
+                <div class="mt-1">
+                  <input
+                    type="text"
+                    name="broker-username"
+                    id="broker-username"
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    placeholder="admin"
+                    v-model="broker.username"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="col-span-3">
+              <div>
+                <label
+                  for="broker-password"
+                  class="block text-sm font-medium text-gray-700"
+                  >Password</label
+                >
+                <div class="mt-1">
+                  <input
+                    type="password"
+                    name="broker-password"
+                    id="broker-password"
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    placeholder="1234"
+                    v-model="broker.password"
                   />
                 </div>
               </div>

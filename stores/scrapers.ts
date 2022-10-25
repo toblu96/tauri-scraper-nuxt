@@ -39,6 +39,8 @@ type MqttBroker = {
   host: string
   port: number
   protocol: MqttProtocol
+  username: string
+  password: string
 }
 
 type MqttBrokerState = {
@@ -128,7 +130,9 @@ export const useScraperStore = defineStore('scraper-store', {
       clientId: "tauri-mqtt-client",
       host: "localhost",
       port: 1883,
-      protocol: MqttProtocol.mqtt
+      protocol: MqttProtocol.mqtt,
+      username: '',
+      password: ''
     },
     mqttBrokerState: {
       connected: false
@@ -146,13 +150,18 @@ export const useScraperStore = defineStore('scraper-store', {
         clientId: "tauri-mqtt-client",
         host: "localhost",
         port: 1883,
-        protocol: MqttProtocol.mqtt
+        protocol: MqttProtocol.mqtt,
+        username: '',
+        password: ''
       }
       // connect broker
       await invoke("plugin:mqtt-client|connect", {
         clientId: this.mqttBroker.clientId,
         host: this.mqttBroker.host,
         port: this.mqttBroker.port,
+        protocol: this.mqttBroker.protocol,
+        username: this.mqttBroker.username,
+        password: this.mqttBroker.password
       });
       // start enabled file watchers
       for (const scraper of this.fileScrapers) {
@@ -174,6 +183,9 @@ export const useScraperStore = defineStore('scraper-store', {
           clientId: this.mqttBroker.clientId,
           host: this.mqttBroker.host,
           port: this.mqttBroker.port,
+          protocol: this.mqttBroker.protocol,
+          username: this.mqttBroker.username,
+          password: this.mqttBroker.password
         });
       }
       // renew watcher if settings change
