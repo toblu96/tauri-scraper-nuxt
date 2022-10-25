@@ -33,7 +33,7 @@
           </div>
         </div>
       </div>
-      <div class="mt-5 flex lg:mt-0 lg:ml-4">
+      <div class="mt-5 flex md:mt-0 md:ml-4">
         <span
           v-if="store.mqttBrokerState.connected"
           class="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 lg:py-2 lg:px-5"
