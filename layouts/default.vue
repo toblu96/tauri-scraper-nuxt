@@ -8,11 +8,7 @@
           to="/"
           class="flex h-16 w-16 items-center justify-center bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-600 md:w-20"
         >
-          <img
-            class="h-8 w-auto"
-            src="https://tailwindui.com/img/logos/mark.svg?color=white"
-            alt="Your Company"
-          />
+          <img class="h-8 w-auto" src="~/assets/eh-logo.svg" alt="Company" />
         </NuxtLink>
       </div>
 
