@@ -45,6 +45,7 @@ type MqttBroker = {
 
 type MqttBrokerState = {
   connected: boolean
+  description: string
 }
 
 const tauriStore = useTauriStore();
@@ -135,7 +136,8 @@ export const useScraperStore = defineStore('scraper-store', {
       password: ''
     },
     mqttBrokerState: {
-      connected: false
+      connected: false,
+      description: ''
     }
   }),
   actions: {
@@ -171,6 +173,10 @@ export const useScraperStore = defineStore('scraper-store', {
       // register tauri events
       await listen("plugin:mqtt//connected", (event) => {
         this.mqttBrokerState.connected = event.payload;
+      });
+      await listen("plugin:mqtt//connection-status", (event) => {
+        console.log("got new description: ", event.payload)
+        this.mqttBrokerState.description = event.payload;
       });
     },
     async tauriSave(event) {

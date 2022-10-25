@@ -1,5 +1,5 @@
-use rumqttc::{AsyncClient, Event, Incoming, MqttOptions, Outgoing, QoS, ConnectionError, Transport};
-use std::sync::Arc;
+use rumqttc::{AsyncClient, Event, Incoming, MqttOptions, Outgoing, QoS, ConnectionError, TlsError, Transport, MqttState};
+use std::{sync::Arc, io::ErrorKind};
 use std::time::Duration;
 use tauri::{
     async_runtime::{spawn, JoinHandle, Mutex},
@@ -50,10 +50,6 @@ async fn connect<R: Runtime>(
         mqttoptions.set_credentials(&username, &password);
     }
 
-    println!("{}", protocol);
-    println!("{}", username);
-    println!("{}", password);
-
     // Use rustls-native-certs to load root certificates from the operating system.
     if &protocol == "mqtts://" {
         let mut root_cert_store = RootCertStore::empty();
@@ -73,6 +69,7 @@ async fn connect<R: Runtime>(
 
     // handle mqtt client in separate task
     let _task = spawn(async move {
+        _app.emit_all("plugin:mqtt//connection-status", "Disconnected").unwrap();
         loop {
             match eventloop.poll().await {
                 // set client connected status
@@ -94,20 +91,61 @@ async fn connect<R: Runtime>(
                     _app.emit_all("plugin:mqtt//connected", false).unwrap();
 
                     match e {
+                        ConnectionError::MqttState(e) => {
+                            println!("Pause eventloop task due to: {}", e);
+                            _app.emit_all("plugin:mqtt//connection-status", format!("{:?}", e)).unwrap();
+                            std::thread::sleep(std::time::Duration::from_secs(1))
+                        }
+                        ConnectionError::Tls(TlsError::Io(e)) => {
+                            // prevent filling log with unnecessary socket errors, e.g.:
+                            // Tls(Io(Os { code: 11001, kind: Uncategorized, message: "Der angegebene Host ist unbekannt." }))
+                            let error: std::io::Error = e;
+                            println!("End eventloop task due to: {}", error);
+                            _app.emit_all("plugin:mqtt//connection-status", error.to_string()).unwrap();
+                            break;
+                        }
+                        ConnectionError::Tls(TlsError::DNSName(e)) => {
+                            // Tls(DNSName(InvalidDnsNameError))
+                            println!("End eventloop task due to: {}", e);
+                            _app.emit_all("plugin:mqtt//connection-status", format!("{:?}", e)).unwrap();
+                            break;
+                        }
+                        ConnectionError::Tls(e) => {
+                            // catch other Tls errors
+                            println!("End eventloop task due to: {}", e);
+                            _app.emit_all("plugin:mqtt//connection-status", format!("{:?}", e)).unwrap();
+                            break;
+                        }
                         ConnectionError::Io(e) => {
                             // prevent filling log with unnecessary socket errors, e.g.:
                             // Io(Custom { kind: ConnectionAborted, error: "connection closed by peer" })
                             // Io(Custom { kind: InvalidData, error: "Promised boundary crossed: 256" })
-                            println!("End eventloop task due to: {}", e);
-                            break;
+                            let error: std::io::Error = e;
+                            if error.kind() == ErrorKind::InvalidData && error.to_string() == "Promised boundary crossed: 256" {
+                                println!("End eventloop task due to: {}", error);
+                                _app.emit_all("plugin:mqtt//connection-status", "Needs SSL/TLS enabled").unwrap();
+                                break;
+                            } else {
+                                println!("Pause eventloop task due to: {}", error);
+                                _app.emit_all("plugin:mqtt//connection-status", error.to_string()).unwrap();
+                                std::thread::sleep(std::time::Duration::from_secs(10))
+                            }
+                            
                         },
                         ConnectionError::ConnectionRefused(e) => {
                             // prevent filling log with unnecessary auth errors, e.g.:
                             // ConnectionRefused(NotAuthorized)
                             println!("End eventloop task due to: {:?}", e);
+                            _app.emit_all("plugin:mqtt//connection-status", format!("{:?}", e)).unwrap();
                             break;
                         },
-                        _ => {}
+                        ConnectionError::Timeout(_e) => {
+                            _app.emit_all("plugin:mqtt//connection-status", "Timeout").unwrap();
+                        }
+                        _ => {
+                            _app.emit_all("plugin:mqtt//connection-status", "Connection Error").unwrap();
+                            break;
+                        }
                     }
                 }
             }

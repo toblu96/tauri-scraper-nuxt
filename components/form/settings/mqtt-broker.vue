@@ -38,7 +38,7 @@ secureBroker.value = broker.protocol === "mqtts://" ? true : false;
             v-else
             class="absolute bottom-0 inline-flex items-center rounded-md bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-800"
           >
-            Connection Error
+            {{ store.mqttBrokerState.description || "Connection Error" }}
           </span>
         </div>
         <div class="mt-5 md:col-span-2 md:mt-0">
