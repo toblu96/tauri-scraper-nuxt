@@ -194,6 +194,7 @@ export const useScraperStore = defineStore('scraper-store', {
     scraperList: state => state.fileScrapers,
     mqttBroker: state => state.mqttBrokerSettings,
     // brokerStateConnected: state => state.mqttBrokerState.connected
+    enabledFileScrapers: state => state.fileScrapers.filter(scraper => scraper.enabled)
   },
 })
 

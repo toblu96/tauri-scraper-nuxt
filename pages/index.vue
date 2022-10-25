@@ -40,6 +40,7 @@ const changeFilePath = async (event) => {
 </script>
 <template>
   <div class="px-6 pt-8">
+    <ListScraperInfo :scrapers="store.enabledFileScrapers" />
     <p>Hello from Home</p>
 
     <button class="rounded bg-red-300 py-2 px-4" @click="test">init</button>
