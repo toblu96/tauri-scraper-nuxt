@@ -62,6 +62,21 @@ const generateUUID = () => {
   });
 };
 
+const executeScraper = async (scraper: Scraper) => {
+  scraper.lastUpdateUTC = new Date().toISOString()
+  // TODO: read file version (invoke tauri plugin)
+  let version = await invoke("plugin:file-version|get_file_version", { path: scraper.path })
+  if (version === 'Could not read version.') {
+    scraper.updateState = `Could not read file version from file '${scraper.path}'.`
+    return
+  }
+  console.log("get version: ", scraper.updateState)
+  // TODO: save last update value to local store
+  scraper.lastVersion = version as string
+  scraper.updateState = "Successful"
+  // TODO: publish to mqtt
+}
+
 const registerFileWatcher = async (scraper: Scraper) => {
   console.log("start scraper with name ", scraper.name)
   try {
@@ -72,18 +87,7 @@ const registerFileWatcher = async (scraper: Scraper) => {
         const { type, payload } = event;
         if (["Create", "Write", "Chmod", "Remove", "Rename", "Rescan", "Error"].includes(type)) {
           console.log(`Watch ${scraper.name}: ${type} - ${payload}`);
-          scraper.lastUpdateUTC = new Date().toISOString()
-          // TODO: read file version (invoke tauri plugin)
-          let version = await invoke("plugin:file-version|get_file_version", { path: scraper.path })
-          if (version === 'Could not read version.') {
-            scraper.updateState = `Could not read file version from file '${scraper.path}'.`
-            return
-          }
-          console.log("get version: ", scraper.updateState)
-          // TODO: save last update value to local store
-          scraper.lastVersion = version as string
-          scraper.updateState = "Successful"
-          // TODO: publish to mqtt
+          await executeScraper(scraper)
         }
       }
     )
@@ -180,6 +184,7 @@ export const useScraperStore = defineStore('scraper-store', {
       let scraper: Scraper = this.fileScrapers.filter(scraper => scraper.id === id)[0];
       if (scraper.enabled) {
         await registerFileWatcher(scraper)
+        await executeScraper(scraper)
       } else {
         await unregisterFileWatcher(scraper)
       }
