@@ -1,6 +1,11 @@
 <template>
   <div class="overflow-hidden bg-white shadow sm:rounded-md">
     <ul role="list" class="divide-y divide-gray-200">
+      <li class="px-4 py-4 sm:px-6">
+        <h2 class="text-lg font-medium leading-6 text-gray-900">
+          Version Scrapers
+        </h2>
+      </li>
       <li v-for="scraper in scrapers" :key="scraper.id">
         <NuxtLink
           :to="`/scrapers/${scraper.id}/edit`"
