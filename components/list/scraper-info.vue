@@ -13,7 +13,7 @@
         >
           <div class="px-4 py-4 sm:px-6">
             <div class="flex items-center justify-between">
-              <p class="truncate text-sm font-medium text-indigo-600">
+              <p class="flex-none text-sm font-medium text-indigo-600">
                 {{ scraper.name }}
               </p>
               <div class="ml-2 flex flex-shrink-0">
@@ -23,7 +23,7 @@
                       ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
                   "
-                  class="inline-flex rounded-full px-2 text-xs font-semibold leading-5"
+                  class="truncate rounded-full px-2 text-xs font-semibold leading-5"
                 >
                   {{ scraper.updateState || "no data" }}
                 </p>
