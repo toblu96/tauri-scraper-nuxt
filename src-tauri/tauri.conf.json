@@ -7,8 +7,8 @@
     "distDir": "../.output/public"
   },
   "package": {
-    "productName": "tauri-scraper-nuxt",
-    "version": "0.1.0"
+    "productName": "EH Version Scraper",
+    "version": "0.0.1"
   },
   "tauri": {
     "allowlist": {
@@ -58,7 +58,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "Version Scraper",
+        "title": "EH Version Scraper",
         "width": 880
       }
     ]
