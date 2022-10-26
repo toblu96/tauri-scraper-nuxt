@@ -2,6 +2,7 @@
 import { Ref, ref, computed } from "vue";
 import { Switch } from "@headlessui/vue";
 import { useScraperStore } from "~~/stores/scrapers";
+import { DocumentPlusIcon } from "@heroicons/vue/24/outline";
 
 const scraperStore = useScraperStore();
 
@@ -93,8 +94,9 @@ const deleteScrapers = () => {
                     type="checkbox"
                     class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"
                     :checked="
-                      indeterminate ||
-                      selectedScrapers.length === scrapers.length
+                      (indeterminate ||
+                        selectedScrapers.length === scrapers.length) &&
+                      selectedScrapers.length > 0
                     "
                     :indeterminate="indeterminate"
                     @change="
@@ -193,6 +195,24 @@ const deleteScrapers = () => {
               </tr>
             </tbody>
           </table>
+          <div class="bg-white px-4 py-12" v-if="scrapers.length <= 0">
+            <div class="mx-auto max-w-lg">
+              <button
+                @click="addScraper()"
+                type="button"
+                class="relative block w-full rounded-lg border-2 border-dashed border-gray-300 p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              >
+                <DocumentPlusIcon
+                  class="mx-auto h-12 w-12 stroke-1 text-gray-400"
+                  aria-hidden="true"
+                />
+
+                <span class="mt-2 block text-sm font-medium text-gray-900"
+                  >Create a new file config</span
+                >
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
