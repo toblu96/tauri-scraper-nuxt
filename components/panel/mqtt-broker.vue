@@ -36,7 +36,7 @@
       <div class="mt-5 flex md:mt-0 md:ml-4">
         <span
           v-if="store.mqttBrokerState.connected"
-          class="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 lg:py-2 lg:px-5"
+          class="inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 md:max-w-[14rem] lg:max-w-[20rem] lg:py-2 lg:px-5 xl:max-w-none"
         >
           <svg
             class="-ml-0.5 mr-1.5 h-2 w-2 animate-pulse text-green-400"
@@ -49,7 +49,7 @@
         </span>
         <span
           v-else
-          class="inline-flex items-center rounded-md bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-800 lg:py-2 lg:px-5"
+          class="inline-flex items-center rounded-md bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-800 md:max-w-[14rem] lg:max-w-[20rem] lg:py-2 lg:px-5 xl:max-w-none"
         >
           {{ store.mqttBrokerState.description || "Connection Error" }}
         </span>
