@@ -58,23 +58,28 @@
       <!-- Narrow sidebar-->
       <nav
         aria-label="Sidebar"
-        class="hidden md:block md:flex-shrink-0 md:overflow-y-auto md:bg-gray-800"
+        class="hidden md:flex md:flex-shrink-0 md:flex-col md:justify-between md:overflow-y-auto md:bg-gray-800"
       >
-        <div class="relative flex w-20 flex-col space-y-3 p-3">
-          <NuxtLink
-            v-for="item in sidebarNavigation"
-            :key="item.name"
-            :to="item.href"
-            :class="[
-              item.current
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-400 hover:bg-gray-700',
-              'inline-flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg',
-            ]"
-          >
-            <span class="sr-only">{{ item.name }}</span>
-            <component :is="item.icon" class="h-6 w-6" aria-hidden="true" />
-          </NuxtLink>
+        <div>
+          <div class="relative flex w-20 flex-col space-y-3 p-3">
+            <NuxtLink
+              v-for="item in sidebarNavigation"
+              :key="item.name"
+              :to="item.href"
+              :class="[
+                item.current
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-400 hover:bg-gray-700',
+                'inline-flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg',
+              ]"
+            >
+              <span class="sr-only">{{ item.name }}</span>
+              <component :is="item.icon" class="h-6 w-6" aria-hidden="true" />
+            </NuxtLink>
+          </div>
+        </div>
+        <div class="p-3">
+          <p class="text-center text-gray-400">v{{ appVersion }}</p>
         </div>
       </nav>
 
@@ -89,12 +94,15 @@
 </template>
 
 <script setup lang="ts">
+import { getVersion } from "@tauri-apps/api/app";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import {
   AdjustmentsHorizontalIcon,
   DocumentTextIcon,
   RectangleGroupIcon,
 } from "@heroicons/vue/24/outline";
+
+const appVersion = await getVersion();
 
 const sidebarNavigation = ref([
   { name: "Dashboard", href: "/", icon: RectangleGroupIcon, current: true },
