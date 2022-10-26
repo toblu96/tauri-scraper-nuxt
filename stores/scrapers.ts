@@ -180,27 +180,26 @@ export const useScraperStore = defineStore('scraper-store', {
       });
     },
     async tauriSave(event) {
+      // event.events is only available on dev!
       console.log("saved to tauri", event)
       await tauriStore.set("settings-file-scrapers", this.fileScrapers)
       await tauriStore.set("settings-file-mqtt-broker", this.mqttBrokerSettings)
-      // reconnect broker if settings change
-      if (event.events.target.clientId) {
-        await invoke("plugin:mqtt-client|connect", {
-          clientId: this.mqttBroker.clientId,
-          host: this.mqttBroker.host,
-          port: this.mqttBroker.port,
-          protocol: this.mqttBroker.protocol,
-          username: this.mqttBroker.username,
-          password: this.mqttBroker.password
-        });
-      }
-      // renew watcher if settings change
-      if (event.events.target.stop && ['path', 'name'].includes(event.events.key)) { // only reload on certain settings
-        let scraper: Scraper = this.fileScrapers.filter(scraper => scraper.id === event.events.target.id)[0];
-        if (scraper.enabled) {
-          await unregisterFileWatcher(scraper)
-          await registerFileWatcher(scraper, this.mqttBrokerState)
-        }
+    },
+    async reconnectMQTTBroker() {
+      await invoke("plugin:mqtt-client|connect", {
+        clientId: this.mqttBroker.clientId,
+        host: this.mqttBroker.host,
+        port: this.mqttBroker.port,
+        protocol: this.mqttBroker.protocol,
+        username: this.mqttBroker.username,
+        password: this.mqttBroker.password
+      });
+    },
+    async renewFileWatcher(scraper: Scraper) {
+      if (scraper.enabled) {
+        console.log("renew file watcher")
+        await unregisterFileWatcher(scraper)
+        await registerFileWatcher(scraper, this.mqttBrokerState)
       }
     },
     addFileScraper(scraper: ScraperProps) {
@@ -227,7 +226,6 @@ export const useScraperStore = defineStore('scraper-store', {
 
     },
     toggleBrokerSecurity() {
-      console.log(this.mqttBrokerSettings.protocol)
       this.mqttBrokerSettings.protocol = this.mqttBrokerSettings.protocol === MqttProtocol.mqtt ? MqttProtocol.mqtts : MqttProtocol.mqtt
     }
   },

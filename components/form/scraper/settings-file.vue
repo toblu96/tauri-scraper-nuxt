@@ -11,6 +11,14 @@ const scraper = scraperStore.fileScrapers.find(
   (scraper) => scraper.id === route.params.id
 );
 
+// trigger file watcher change
+watch(
+  () => [scraper.path],
+  () => {
+    scraperStore.renewFileWatcher(scraper);
+  }
+);
+
 const changeFilePath = async (event) => {
   // Open a selection dialog for directories
   const selected = await open({

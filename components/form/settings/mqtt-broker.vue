@@ -7,6 +7,17 @@ const broker = store.mqttBroker;
 
 const secureBroker = ref(false);
 secureBroker.value = broker.protocol === "mqtts://" ? true : false;
+
+// trigger broker reconnection on settings changed
+watch(
+  () => broker,
+  () => {
+    store.reconnectMQTTBroker();
+  },
+  {
+    deep: true,
+  }
+);
 </script>
 <template>
   <form class="space-y-6" action="#" method="POST">
