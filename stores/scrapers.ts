@@ -88,7 +88,14 @@ const executeScraper = async (scraper: Scraper, brokerConnected: boolean) => {
   let clientErr = await invoke("plugin:mqtt-client|publish", {
     topic: scraper.mqttTopic,
     payload: {
-      version: scraper.lastVersion || "no data"
+
+      deviceId: "Monitor",
+      timestamp: scraper.lastUpdateUTC,
+      group: "autogroup_Monitor",
+      measures: {
+        ts: scraper.lastVersion || "no data",
+        tsDataType: "String",
+      },
     },
   });
   if (clientErr) {
