@@ -61,6 +61,9 @@
         "title": "EH Version Scraper",
         "width": 880
       }
-    ]
+    ],
+    "systemTray": {
+      "iconPath": "icons/icon.png"
+    }
   }
 }
