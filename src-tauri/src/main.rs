@@ -47,7 +47,7 @@ fn main() {
                     // use app.exit(0) instead to perform cleanup before closing the application
                     // std::process::exit(0);
 
-                    app.exit(1);
+                    app.exit(0);
                 }
                 "hide" => {
                     let window = app.get_window("main").unwrap();

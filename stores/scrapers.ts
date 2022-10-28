@@ -186,14 +186,13 @@ export const useScraperStore = defineStore('scraper-store', {
         this.mqttBrokerState.description = event.payload;
       });
     },
-    async tauriSave(event) {
-      // event.events is only available on dev!
-      console.log("saved to tauri", event)
+    async tauriSave() {
       await tauriStore.set("settings-file-scrapers", this.fileScrapers)
       await tauriStore.set("settings-file-mqtt-broker", this.mqttBrokerSettings)
 
       // force save due to missing tauri::RunEvent::Exit call
       await tauriStore.save()
+      console.log("[Tauri] Saved settings to local disk")
     },
     async reconnectMQTTBroker() {
       await invoke("plugin:mqtt-client|connect", {
