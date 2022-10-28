@@ -191,6 +191,9 @@ export const useScraperStore = defineStore('scraper-store', {
       console.log("saved to tauri", event)
       await tauriStore.set("settings-file-scrapers", this.fileScrapers)
       await tauriStore.set("settings-file-mqtt-broker", this.mqttBrokerSettings)
+
+      // force save due to missing tauri::RunEvent::Exit call
+      await tauriStore.save()
     },
     async reconnectMQTTBroker() {
       await invoke("plugin:mqtt-client|connect", {
@@ -242,6 +245,9 @@ export const useScraperStore = defineStore('scraper-store', {
     // brokerStateConnected: state => state.mqttBrokerState.connected
     enabledFileScrapers: state => state.fileScrapers.filter(scraper => scraper.enabled)
   },
+  debounce: {
+    tauriSave: 1000
+  }
 })
 
 // enable hot module replacement

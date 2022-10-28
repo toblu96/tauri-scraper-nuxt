@@ -19,12 +19,14 @@
     "@headlessui/vue": "^1.7.3",
     "@heroicons/vue": "^2.0.12",
     "@pinia/nuxt": "^0.4.3",
+    "@pinia/plugin-debounce": "^0.1.0",
     "@tailwindcss/forms": "^0.5.3",
     "@tauri-apps/api": "^1.1.0",
     "mqtt": "^4.3.7",
     "pinia": "^2.0.23",
     "tauri-plugin-autostart-api": "github:tauri-apps/tauri-plugin-autostart#dev",
     "tauri-plugin-fs-watch-api": "github:tauri-apps/tauri-plugin-fs-watch#dev",
-    "tauri-plugin-store-api": "github:tauri-apps/tauri-plugin-store#dev"
+    "tauri-plugin-store-api": "github:tauri-apps/tauri-plugin-store#dev",
+    "ts-debounce": "^4.0.0"
   }
 }
