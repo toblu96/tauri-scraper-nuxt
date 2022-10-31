@@ -228,7 +228,7 @@ export const useScraperStore = defineStore('scraper-store', {
       let scraper: Scraper = this.fileScrapers.filter(scraper => scraper.id === id)[0];
       if (scraper.enabled) {
         await registerFileWatcher(scraper, this.mqttBrokerState)
-        await executeScraper(scraper, this.mqttBrokerState.enabled)
+        await executeScraper(scraper, this.mqttBrokerState.connected)
       } else {
         await unregisterFileWatcher(scraper)
       }
