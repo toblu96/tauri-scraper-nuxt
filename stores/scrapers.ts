@@ -41,6 +41,8 @@ type MqttBroker = {
   protocol: MqttProtocol
   username: string
   password: string
+  deviceId: string
+  deviceGroup: string
 }
 
 type MqttBrokerState = {
@@ -67,10 +69,16 @@ const generateUUID = () => {
   });
 };
 
-const executeScraper = async (scraper: Scraper, brokerConnected: boolean) => {
+const executeScraper = async (scraper: Scraper, broker: MqttBroker, brokerConnected: boolean) => {
   scraper.lastUpdateUTC = new Date().toISOString()
+  // check solman config
+  if (broker.deviceGroup === '' || broker.deviceId === '') {
+    scraper.updateState = `Solman device configuration missing.`
+    return
+  }
+
   // read file version 
-  let version = await invoke("plugin:file-version|get_file_version", { path: scraper.path })
+  let version: string = await invoke("plugin:file-version|get_file_version", { path: scraper.path })
   if (version === 'Could not read version.') {
     scraper.updateState = `Could not read file version from file '${scraper.path}'.`
     return
@@ -88,13 +96,12 @@ const executeScraper = async (scraper: Scraper, brokerConnected: boolean) => {
   let clientErr = await invoke("plugin:mqtt-client|publish", {
     topic: scraper.mqttTopic,
     payload: {
-
-      deviceId: "Monitor",
+      deviceId: broker.deviceId,
       timestamp: scraper.lastUpdateUTC,
-      group: "autogroup_Monitor",
+      group: broker.deviceGroup,
       measures: {
-        ts: scraper.lastVersion || "no data",
-        tsDataType: "String",
+        testVersion: scraper.lastVersion || "no data",
+        testVersionDataType: "String",
       },
     },
   });
@@ -105,7 +112,7 @@ const executeScraper = async (scraper: Scraper, brokerConnected: boolean) => {
   }
 }
 
-const registerFileWatcher = async (scraper: Scraper, brokerState: MqttBrokerState) => {
+const registerFileWatcher = async (scraper: Scraper, broker: MqttBroker, brokerState: MqttBrokerState) => {
   console.log("start scraper with name ", scraper.name)
   try {
     scraper.stop = await watch(
@@ -115,7 +122,7 @@ const registerFileWatcher = async (scraper: Scraper, brokerState: MqttBrokerStat
         const { type, payload } = event;
         if (["Create", "Write", "Chmod", "Remove", "Rename", "Rescan", "Error"].includes(type)) {
           console.log(`Watch ${scraper.name}: ${type} - ${payload}`);
-          await executeScraper(scraper, brokerState.connected)
+          await executeScraper(scraper, broker, brokerState.connected)
         }
       }
     )
@@ -140,7 +147,9 @@ export const useScraperStore = defineStore('scraper-store', {
       port: 1883,
       protocol: MqttProtocol.mqtt,
       username: '',
-      password: ''
+      password: '',
+      deviceId: '',
+      deviceGroup: ''
     },
     mqttBrokerState: {
       connected: false,
@@ -154,15 +163,17 @@ export const useScraperStore = defineStore('scraper-store', {
       const data = await tauriStore.get("settings-file-scrapers")
       this.fileScrapers = data || []
       // initial broker settings
-      const broker = await tauriStore.get("settings-file-mqtt-broker")
+      const broker: MqttBroker = await tauriStore.get("settings-file-mqtt-broker")
       this.mqttBrokerSettings = broker || {
         clientId: "tauri-mqtt-client",
         host: "localhost",
         port: 1883,
         protocol: MqttProtocol.mqtt,
         username: '',
-        password: ''
-      }
+        password: '',
+        deviceId: '',
+        deviceGroup: ''
+      } as MqttBroker
       // connect broker
       await invoke("plugin:mqtt-client|connect", {
         clientId: this.mqttBroker.clientId,
@@ -175,7 +186,7 @@ export const useScraperStore = defineStore('scraper-store', {
       // start enabled file watchers
       for (const scraper of this.fileScrapers) {
         if (scraper.enabled)
-          await registerFileWatcher(scraper, this.mqttBrokerState)
+          await registerFileWatcher(scraper, this.mqttBrokerSettings, this.mqttBrokerState)
       }
       // register tauri events
       await listen("plugin:mqtt//connected", (event) => {
@@ -208,7 +219,7 @@ export const useScraperStore = defineStore('scraper-store', {
       if (scraper.enabled) {
         console.log("renew file watcher")
         await unregisterFileWatcher(scraper)
-        await registerFileWatcher(scraper, this.mqttBrokerState)
+        await registerFileWatcher(scraper, this.mqttBrokerSettings, this.mqttBrokerState)
       }
     },
     addFileScraper(scraper: ScraperProps) {
@@ -227,8 +238,8 @@ export const useScraperStore = defineStore('scraper-store', {
       // handle file watcher
       let scraper: Scraper = this.fileScrapers.filter(scraper => scraper.id === id)[0];
       if (scraper.enabled) {
-        await registerFileWatcher(scraper, this.mqttBrokerState)
-        await executeScraper(scraper, this.mqttBrokerState.connected)
+        await registerFileWatcher(scraper, this.mqttBrokerSettings, this.mqttBrokerState)
+        await executeScraper(scraper, this.mqttBrokerSettings, this.mqttBrokerState.connected)
       } else {
         await unregisterFileWatcher(scraper)
       }

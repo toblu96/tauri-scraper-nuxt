@@ -1,6 +1,7 @@
 <script setup>
 import { useScraperStore } from "~~/stores/scrapers";
 import { Switch } from "@headlessui/vue";
+import { QuestionMarkCircleIcon } from "@heroicons/vue/20/solid";
 
 const store = useScraperStore();
 const broker = store.mqttBroker;
@@ -10,7 +11,14 @@ secureBroker.value = broker.protocol === "mqtts://" ? true : false;
 
 // trigger broker reconnection on settings changed
 watch(
-  () => broker,
+  () => [
+    broker.clientId,
+    broker.host,
+    broker.port,
+    broker.protocol,
+    broker.username,
+    broker.password,
+  ],
   () => {
     store.reconnectMQTTBroker();
   },
@@ -21,7 +29,10 @@ watch(
 </script>
 <template>
   <form class="space-y-6" action="#" method="POST">
-    <div class="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
+    <div
+      class="space-y-6 divide-y divide-gray-200 bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6"
+    >
+      <!-- Broker config -->
       <div class="md:grid md:grid-cols-3 md:gap-6">
         <div class="relative w-full md:col-span-1">
           <div>
@@ -176,6 +187,83 @@ watch(
                     placeholder="1234"
                     v-model="broker.password"
                   />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Solman config -->
+      <div class="pt-6 md:grid md:grid-cols-3 md:gap-6">
+        <div class="relative w-full md:col-span-1">
+          <div>
+            <h3 class="text-base font-medium leading-6 text-gray-900">
+              Solman Configuration
+            </h3>
+            <p class="mt-1 text-sm text-gray-500">
+              Specify solman device settings.
+            </p>
+          </div>
+        </div>
+        <div class="mt-5 md:col-span-2 md:mt-0">
+          <div class="grid grid-cols-6 gap-6">
+            <div class="col-span-3">
+              <div>
+                <label
+                  for="solman-device-id"
+                  class="block text-sm font-medium text-gray-700"
+                  >Device Id</label
+                >
+                <div
+                  class="relative mt-1 rounded-md shadow-sm"
+                  title="Same value as Device Id in Solman Device."
+                >
+                  <input
+                    type="text"
+                    name="solman-device-id"
+                    id="solman-device-id"
+                    class="block w-full rounded-md border-gray-300 pr-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    placeholder="FC_0103"
+                    v-model="broker.deviceId"
+                  />
+                  <div
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"
+                  >
+                    <QuestionMarkCircleIcon
+                      class="h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-span-3">
+              <div>
+                <label
+                  for="solman-device-group"
+                  class="block text-sm font-medium text-gray-700"
+                  >Device Group</label
+                >
+                <div
+                  class="relative mt-1 rounded-md shadow-sm"
+                  title="Same value as Device Group in Solman Device."
+                >
+                  <input
+                    type="text"
+                    name="solman-device-group"
+                    id="solman-device-group"
+                    class="block w-full rounded-md border-gray-300 pr-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    placeholder="autogroup_Monitor"
+                    v-model="broker.deviceGroup"
+                  />
+                  <div
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"
+                  >
+                    <QuestionMarkCircleIcon
+                      class="h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
