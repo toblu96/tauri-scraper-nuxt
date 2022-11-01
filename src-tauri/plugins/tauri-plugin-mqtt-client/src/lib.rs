@@ -1,4 +1,4 @@
-use rumqttc::{AsyncClient, Event, Incoming, MqttOptions, Outgoing, QoS, ConnectionError, TlsError, Transport, MqttState};
+use rumqttc::{AsyncClient, Event, Incoming, MqttOptions, Outgoing, QoS, ConnectionError, TlsError, Transport};
 use std::{sync::Arc, io::ErrorKind};
 use std::time::Duration;
 use tauri::{
