@@ -80,16 +80,23 @@ watch(
               />
             </div>
 
-            <div class="col-span-6 flex flex-col justify-between sm:col-span-2">
-              <label
-                for="broker-secure"
-                class="block text-sm font-medium text-gray-700"
-                >SSL/TLS</label
-              >
-              <div
-                class="place-self-stretch"
-                title="Load certificates from server"
-              >
+            <div
+              class="col-span-6 flex flex-col justify-between sm:col-span-2"
+              title="Load certificates from server"
+            >
+              <div class="flex">
+                <label
+                  for="broker-secure"
+                  class="block text-sm font-medium text-gray-700"
+                  >TLS/SSL</label
+                >
+                <span class="ml-4 text-sm text-gray-500" id="broker-secure"
+                  ><QuestionMarkCircleIcon
+                    class="h-5 w-5 text-gray-400"
+                    aria-hidden="true"
+                /></span>
+              </div>
+              <div class="place-self-stretch">
                 <Switch
                   id="broker-secure"
                   v-model="secureBroker"
