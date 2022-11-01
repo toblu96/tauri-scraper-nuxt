@@ -3,6 +3,8 @@ import { Ref, ref, computed } from "vue";
 import { Switch } from "@headlessui/vue";
 import { useScraperStore } from "~~/stores/scrapers";
 import { DocumentPlusIcon } from "@heroicons/vue/24/outline";
+import { save, message } from "@tauri-apps/api/dialog";
+import { writeTextFile, BaseDirectory } from "@tauri-apps/api/fs";
 
 const scraperStore = useScraperStore();
 
@@ -40,6 +42,41 @@ const deleteScrapers = () => {
   }
   selectedScrapers.value = [];
 };
+const exportScrapers = async () => {
+  try {
+    // open save dialog
+    const filePath = await save({
+      defaultPath: "settings",
+      filters: [
+        {
+          name: "json",
+          extensions: ["json"],
+        },
+      ],
+    });
+    // filter content from selected scrapers and drop unnecessary keys
+    const data = scraperStore.scraperList
+      .filter((scraper) => selectedScrapers.value.includes(scraper.id))
+      .map(
+        ({
+          enabled,
+          stop,
+          id,
+          lastUpdateUTC,
+          lastVersion,
+          updateState,
+          ...keepAttrs
+        }) => keepAttrs
+      );
+    // write selected scrapers to file
+    await writeTextFile(filePath, JSON.stringify(data));
+  } catch (error) {
+    message(`Could not save settings: \n${error}`, {
+      title: "Tauri | Save file scraper settings",
+      type: "warning",
+    });
+  }
+};
 </script>
 
 <template>
@@ -72,11 +109,11 @@ const deleteScrapers = () => {
             class="absolute top-0 left-12 flex h-12 items-center space-x-3 bg-gray-50 sm:left-16"
           >
             <button
-              disabled
+              @click="exportScrapers()"
               type="button"
               class="inline-flex items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-30"
             >
-              Bulk edit
+              Export
             </button>
             <button
               @click="deleteScrapers()"
