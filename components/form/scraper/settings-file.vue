@@ -24,7 +24,6 @@ const changeFilePath = async (event) => {
   const selected = await open({
     directory: false,
     multiple: false,
-    defaultPath: await appDir(),
   });
   if (selected === null) {
     // user cancelled the selection
