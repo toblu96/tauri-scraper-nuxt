@@ -13,6 +13,7 @@ const autostartEnabled = ref(await store.get("settings-autostartEnabled"));
 //autostart functionality
 watchEffect(async () => {
   await store.set("settings-autostartEnabled", autostartEnabled.value);
+  await store.save();
 
   // only change autostart state if required
   if ((await isEnabled()) == autostartEnabled.value) return;
