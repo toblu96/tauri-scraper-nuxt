@@ -3,8 +3,8 @@ import { Ref, ref, computed } from "vue";
 import { Switch } from "@headlessui/vue";
 import { useScraperStore } from "~~/stores/scrapers";
 import { DocumentPlusIcon } from "@heroicons/vue/24/outline";
-import { save, message } from "@tauri-apps/api/dialog";
-import { writeTextFile, BaseDirectory } from "@tauri-apps/api/fs";
+import { save, message, open } from "@tauri-apps/api/dialog";
+import { writeTextFile, readTextFile } from "@tauri-apps/api/fs";
 
 const scraperStore = useScraperStore();
 
@@ -14,6 +14,12 @@ type ScraperProps = {
   enabled: boolean;
   lastUpdate?: string;
   path: string;
+};
+
+type ImportedScraperProps = {
+  name: string;
+  path: string;
+  mqttTopic: string;
 };
 
 const props = defineProps<{
@@ -54,6 +60,11 @@ const exportScrapers = async () => {
         },
       ],
     });
+    if (filePath === null) {
+      // user cancelled the selection
+      console.log("aborted file selection");
+      return;
+    }
     // filter content from selected scrapers and drop unnecessary keys
     const data = scraperStore.scraperList
       .filter((scraper) => selectedScrapers.value.includes(scraper.id))
@@ -77,6 +88,58 @@ const exportScrapers = async () => {
     });
   }
 };
+const importScrapers = async () => {
+  try {
+    // get file path from settings file
+    const filePath = (await open({
+      directory: false,
+      multiple: false,
+      filters: [
+        {
+          name: "json",
+          extensions: ["json"],
+        },
+      ],
+    })) as string;
+    if (filePath === null) {
+      // user cancelled the selection
+      console.log("aborted file selection");
+      return;
+    }
+    // open settings file and extract config
+    const files: ImportedScraperProps[] = JSON.parse(
+      await readTextFile(filePath)
+    );
+    // add files to store
+    for (const file of files) {
+      if (!file.name || !file.path || !file.mqttTopic) {
+        await message(
+          `Scraper is missing some params: \n
+            name:\t ${file.name || "-"}
+            path:\t ${file.path || "-"}
+            mqttTopic:\t ${file.mqttTopic || "-"}\n` +
+            `\nSkip that one and try next.`,
+          {
+            title: "Tauri | File scraper import",
+            type: "warning",
+          }
+        );
+        continue;
+      }
+      scraperStore.addFileScraper({
+        enabled: false,
+        name: file.name || "Default name",
+        path: file.path || "",
+        mqttTopic: file.mqttTopic || "",
+      });
+    }
+  } catch (error) {
+    message(`Could not import scrapers: \n${error}`, {
+      title: "Tauri | File scraper import",
+      type: "warning",
+    });
+  }
+};
 </script>
 
 <template>
@@ -88,7 +151,14 @@ const exportScrapers = async () => {
         quick actions.
       </p>
     </div>
-    <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+    <div class="mt-4 space-x-4 sm:mt-0 sm:ml-16 sm:flex-none">
+      <button
+        @click="importScrapers()"
+        type="button"
+        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+      >
+        Import
+      </button>
       <button
         @click="addScraper()"
         type="button"
