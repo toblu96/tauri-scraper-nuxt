@@ -105,8 +105,8 @@ const executeScraper = async (
       timestamp: scraper.lastUpdateUTC,
       group: broker.deviceGroup,
       measures: {
-        testVersion: scraper.lastVersion || "no data",
-        testVersionDataType: "String",
+        [`${scraper.name}`]: scraper.lastVersion || "no data",
+        [`${scraper.name}DataType`]: "String",
       },
     },
   });
