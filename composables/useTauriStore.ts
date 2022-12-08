@@ -5,5 +5,5 @@ const appName = await getName();
 const store = new Store(`C:\\ProgramData\\Tauri\\${appName}\\settings.dat`);
 
 export const useTauriStore = () => {
-    return store
-}
+  return store;
+};
