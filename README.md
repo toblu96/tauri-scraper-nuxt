@@ -3,6 +3,26 @@ Checks files and services for version change on a windows machine.
 
 <br/>
 
+# Architecture
+
+This application is developed as a Tauri app. Due to the need to run the application on server boot (without a user logged in), there is a small webserver, which communicates with the Tauri app.
+
+```mermaid
+flowchart TB
+subgraph Windows Server 2019
+    logic <--> id1(fa:fa-file Scheduler)
+    logic <--> id2(fa:fa-file File Access)
+    logic <--> id3[(File Database)]
+    subgraph Axum Http Server 'global'
+    routes --> logic
+    end
+    subgraph Tauri App 'user scope'
+    direction BT
+    frontend -- tcp --> routes
+    end
+end
+```
+
 # Application Installation on Windows Server 2019
 
 ## Global WebView2 setup
@@ -11,11 +31,15 @@ Globally install WebView2. Tauri uses it to run and display the frontend code. D
 
 ## Application Installation
 
-Under construction...
+> Under construction...
+
+The main application can be installed with the delivered `.msi` file. To run the backend http server on server boot, the installed `.exe` needs to be added as a Windows task and executed on server boot. Don't forget to run the task even no user is logged in.
 
 ## Uninstall application
 
-Under construction...
+> Under construction...
+
+The Windows task needs to be deleted manually. Afterwards, the application can be uninstalled normally.
 
 # Project Setup
 
