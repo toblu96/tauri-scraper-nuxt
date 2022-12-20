@@ -54,7 +54,7 @@ pub async fn start(port: u16) {
         )
         // .route("/", get(handler))
         .with_state(db)
-        .merge(router::routes());
+        .nest("/api", router::routes());
 
     // run it
     let addr = SocketAddr::from(([0, 0, 0, 0], port));

@@ -15,6 +15,7 @@ pub fn routes() -> Router {
 /// Returns all relevant information for this application.
 #[utoipa::path(
         get,
+        context_path = "/api",
         path = "/info",
         tag = "info",
         responses(
