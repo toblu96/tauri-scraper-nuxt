@@ -11,10 +11,7 @@ use std::{
     net::SocketAddr,
     sync::{Arc, RwLock},
 };
-use utoipa::{
-    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
-    Modify, OpenApi,
-};
+use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 // import routes
@@ -39,7 +36,7 @@ pub async fn start(port: u16) {
             // todo::delete_todo,
         ),
         components(
-            // schemas(todo::Todo, todo::TodoError)
+            schemas(router::info::Info)
         ),
         tags(
             (name = "info", description = "Information about this application")
