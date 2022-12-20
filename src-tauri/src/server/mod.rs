@@ -1,10 +1,21 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Redirect},
+    routing::get,
+    Json, Router,
+};
 use serde::Serialize;
 use std::{
     collections::HashMap,
     net::SocketAddr,
     sync::{Arc, RwLock},
 };
+use utoipa::{
+    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
+    Modify, OpenApi,
+};
+use utoipa_swagger_ui::SwaggerUi;
 
 // import routes
 mod router;
@@ -16,10 +27,35 @@ pub async fn start(port: u16) {
     // init values
     db.write().unwrap().insert("counter".to_string(), 0.clone());
 
+    // openapi things
+    #[derive(OpenApi)]
+    #[openapi(
+        paths(
+            router::info::get_info,
+            // todo::list_todos,
+            // todo::search_todos,
+            // todo::create_todo,
+            // todo::mark_done,
+            // todo::delete_todo,
+        ),
+        components(
+            // schemas(todo::Todo, todo::TodoError)
+        ),
+        tags(
+            (name = "info", description = "Information about this application")
+        )
+    )]
+    struct ApiDoc;
+
     // build our application with a route
     let app = Router::new()
         // .merge(router::info::routes())
-        .route("/", get(handler))
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
+        .route(
+            "/",
+            get(|| async { Redirect::permanent(&"/swagger-ui".to_string()) }),
+        )
+        // .route("/", get(handler))
         .with_state(db)
         .merge(router::routes());
 
@@ -68,8 +104,3 @@ struct Todo {
     completed: bool,
     count: u16,
 }
-
-// async fn handler() -> Html<&'static str> {
-
-//     Html("<h1>Hello, World!</h1><p>Whats up?</p>")
-// }

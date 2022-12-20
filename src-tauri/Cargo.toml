@@ -1,9 +1,9 @@
 [package]
 name = "app"
-version = "0.1.0"
-description = "A Tauri App"
+version = "0.0.2-dev2"
+description = "Checks files and services for version change on a windows machine."
 authors = ["you"]
-license = ""
+license = "MIT"
 repository = ""
 default-run = "app"
 edition = "2021"
@@ -21,6 +21,8 @@ tauri = { version = "1.1.1", features = ["api-all", "system-tray"] }
 tokio = "1.23.0"
 axum = "0.6.1"
 clap = { version = "4.0.29", features = ["derive"] }
+utoipa = { version = "2.4.2", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "3.0.1", features = ["axum"] }
 
 [features]
 # by default Tauri runs in production mode
