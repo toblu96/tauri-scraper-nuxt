@@ -2,42 +2,7 @@ use crate::server::router::files::File;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-// use async_trait::async_trait;
-// use axum::http::request::Parts;
-// use axum_core::extract::{FromRef, FromRequestParts};
-// // use http::request::Parts;
-
-// use std::convert::Infallible;
-
-// // the extractor your library provides
-// struct MyLibraryExtractor;
-
-// #[async_trait]
-// impl<S> FromRequestParts<S> for MyLibraryExtractor
-// where
-//     // keep `S` generic but require that it can produce a `MyLibraryState`
-//     // this means users will have to implement `FromRef<UserState> for MyLibraryState`
-//     MyLibraryState: FromRef<S>,
-//     S: Send + Sync,
-// {
-//     type Rejection = Infallible;
-
-//     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-//         // get a `MyLibraryState` from a reference to the state
-//         let state = MyLibraryState::from_ref(state);
-
-//         // ...
-//         // # todo!()
-//         Ok(Self)
-//     }
-// }
-
-// // the state your library needs
-// struct MyLibraryState {
-//     files: u32,
-// }
-
-static FILE_NAME: &str = "C:/Users/i40010702/Desktop/test/jsonDB.json";
+static FILE_NAME: &str = "C:/ProgramData/Tauri/EH Version Scraper/backendDB.json";
 
 #[derive(Serialize, Deserialize)]
 struct FileDB {
@@ -64,13 +29,12 @@ pub fn save_files_data(files: Vec<File>) -> Result<(), &'static str> {
     Ok(())
 }
 
-pub fn load_files_data() -> Result<Vec<File>, &'static str> {
+pub fn load_files_data() -> Result<Vec<File>, std::io::Error> {
     println!("Load data from file..");
     let path = std::path::Path::new(FILE_NAME);
-    let data = std::fs::read_to_string(path).expect("Unable to read file");
+    let data = std::fs::read_to_string(path)?; //.expect("Unable to read file");
 
-    let parsed: FileDB =
-        serde_json::from_str(&data.to_string()).expect("JSON does not have correct format.");
+    let parsed: FileDB = serde_json::from_str(&data.to_string())?; //.expect("JSON does not have correct format.");
 
     Ok(parsed.files)
 }
