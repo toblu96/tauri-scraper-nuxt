@@ -5,6 +5,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 // import routes
 mod router;
+mod store;
 
 pub async fn start(port: u16) {
     // openapi things

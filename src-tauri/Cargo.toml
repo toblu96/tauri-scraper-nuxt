@@ -20,6 +20,8 @@ serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.1.1", features = ["api-all", "system-tray"] }
 tokio = "1.23.0"
 axum = "0.6.1"
+axum-core = "0.3.0"
+async-trait = "0.1.60"
 clap = { version = "4.0.29", features = ["derive"] }
 utoipa = { version = "2.4.2", features = ["axum_extras", "uuid"] }
 utoipa-swagger-ui = { version = "3.0.1", features = ["axum"] }

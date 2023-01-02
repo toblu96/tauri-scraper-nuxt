@@ -1,3 +1,4 @@
+use crate::server::store;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -17,6 +18,18 @@ use uuid::Uuid;
 pub fn routes() -> Router {
     // build local state
     let db = Db::default();
+
+    let data_init = store::load_files_data();
+    match data_init {
+        Ok(files) => {
+            for file in files.iter() {
+                db.write().unwrap().insert(file.id, file.clone());
+            }
+        }
+        Err(err) => {
+            println!("{}", err)
+        }
+    }
 
     Router::new()
         .route("/files", get(files_index).post(files_create))
@@ -86,6 +99,15 @@ pub async fn files_create(
     };
 
     db.write().unwrap().insert(file.id, file.clone());
+
+    // store changes to local file.
+    store_to_system_file(db);
+    // if let Err(err) =
+    //     store::save_files_data(db.read().unwrap().values().cloned().collect::<Vec<_>>())
+    // {
+    //     println!("Got an error while storing data to file..");
+    //     println!("{:?}", err);
+    // }
 
     (StatusCode::CREATED, Json(file))
 }
@@ -174,6 +196,9 @@ async fn files_update(
 
     db.write().unwrap().insert(file.id, file.clone());
 
+    // store changes to local file.
+    store_to_system_file(db);
+
     Ok(Json(file))
 }
 
@@ -195,6 +220,9 @@ async fn files_update(
 )]
 async fn files_delete(Path(id): Path<Uuid>, State(db): State<Db>) -> impl IntoResponse {
     if db.write().unwrap().remove(&id).is_some() {
+        // store changes to local file.
+        store_to_system_file(db);
+
         StatusCode::NO_CONTENT
     } else {
         StatusCode::NOT_FOUND
@@ -216,3 +244,13 @@ pub struct File {
 
 /// Local state for file routes
 type Db = Arc<RwLock<HashMap<Uuid, File>>>;
+
+/// Local function to store changes to file system.
+fn store_to_system_file(db: Db) {
+    if let Err(err) =
+        store::save_files_data(db.read().unwrap().values().cloned().collect::<Vec<_>>())
+    {
+        println!("Got an error while storing data to file..");
+        println!("{:?}", err);
+    }
+}
