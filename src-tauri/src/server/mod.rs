@@ -17,13 +17,16 @@ pub async fn start(port: u16) {
             router::files::files_create,
             router::files::files_update,
             router::files::files_delete,
+            router::settings::settings_index,
+            router::settings::settings_update,
         ),
         components(
-            schemas(router::info::Info, router::files::File, router::files::FileUpdateParams, router::files::FileCreateParams)
+            schemas(router::info::Info, router::files::File, router::files::FileUpdateParams, router::files::FileCreateParams, router::settings::Broker, router::settings::BrokerUpdateParams)
         ),
         tags(
             (name = "info", description = "Information about this application"),
-            (name = "files", description = "File items management API")
+            (name = "files", description = "File items management API"),
+            (name = "settings", description = "Application settings management API")
         )
     )]
     struct ApiDoc;
