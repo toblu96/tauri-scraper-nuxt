@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+mod plugins;
 // import routes
 mod router;
 mod store;
@@ -40,6 +41,9 @@ pub async fn start(port: u16) {
             get(|| async { Redirect::permanent(&"/swagger-ui".to_string()) }),
         )
         .nest("/api", router::routes());
+
+    // init plugins
+    plugins::init();
 
     // run it
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
