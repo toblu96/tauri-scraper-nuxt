@@ -92,7 +92,7 @@ pub struct BrokerUpdateParams {
     responses(
         (status = 200, description = "Broker settings updated successfully", body = Broker),
         (status = 404, description = "Settings in DB not found", body = DBError, example = json!(DBError::KeyNotFound(String::from("key not found in storage")))),
-        (status = 500, description = "Settings in DB not found", body = DBError, example = json!(DBError::WriteError(String::from("Could not write data to file"))))
+        (status = 500, description = "Error on DB write operation", body = DBError, example = json!(DBError::WriteError(String::from("Could not write data to file"))))
     )
 )]
 async fn settings_update(
