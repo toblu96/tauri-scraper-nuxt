@@ -1,4 +1,4 @@
-use crate::server::store::{self, AppState};
+use crate::server::store::AppState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -7,34 +7,17 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, sync::Arc};
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
+static DB_KEY: &str = "files";
+
 /// exports all routes from this module as router
 pub fn routes() -> Router<Arc<AppState>> {
-    // build local state
-    let db = Db::default();
-
-    let data_init = store::load_files_data();
-    match data_init {
-        Ok(files) => {
-            for file in files.iter() {
-                db.write().unwrap().insert(file.id, file.clone());
-            }
-        }
-        Err(err) => {
-            println!("{}", err)
-        }
-    }
-
     Router::new()
         .route("/files", get(files_index).post(files_create))
         .route("/files/:id", patch(files_update).delete(files_delete))
-        .with_state(db)
 }
 
 /// List all configured files.
@@ -49,8 +32,21 @@ pub fn routes() -> Router<Arc<AppState>> {
             (status = 200, description = "List all files successfully", body = [File])
         )
     )]
-pub async fn files_index(State(db): State<Db>) -> impl IntoResponse {
-    let files = db.read().unwrap().values().cloned().collect::<Vec<_>>();
+pub async fn files_index(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    // init data if store empty
+    init_state_if_necessary(&state);
+
+    let files = state
+        .db
+        .read()
+        .unwrap()
+        .get_unwrap::<Files>(DB_KEY)
+        .unwrap()
+        .values()
+        .cloned()
+        .collect::<Vec<_>>();
+
+    // let files = db.read().unwrap().values().cloned().collect::<Vec<_>>();
     (StatusCode::OK, Json(files))
 }
 
@@ -80,13 +76,18 @@ pub struct FileCreateParams {
     tag = "files",
     request_body = FileCreateParams,
     responses(
-        (status = 201, description = "File added successfully", body = File)
+        (status = 201, description = "File added successfully", body = File),
+        (status = 404, description = "File in DB not found", body = DBError, example = json!(DBError::KeyNotFound(String::from("key not found in storage")))),
+        (status = 500, description = "Error on DB write operation", body = DBError, example = json!(DBError::WriteError(String::from("Could not write data to file"))))
     )
 )]
 pub async fn files_create(
-    State(db): State<Db>,
+    State(state): State<Arc<AppState>>,
     Json(input): Json<FileCreateParams>,
 ) -> impl IntoResponse {
+    // init data if store empty
+    init_state_if_necessary(&state);
+
     let file = File {
         id: Uuid::new_v4(),
         name: input.name,
@@ -98,18 +99,29 @@ pub async fn files_create(
         mqtt_topic: input.mqtt_topic,
     };
 
-    db.write().unwrap().insert(file.id, file.clone());
+    // update hash map
+    let mut files = state
+        .db
+        .read()
+        .unwrap()
+        .get_unwrap::<Files>(DB_KEY)
+        .unwrap();
 
-    // store changes to local file.
-    store_to_system_file(db);
-    // if let Err(err) =
-    //     store::save_files_data(db.read().unwrap().values().cloned().collect::<Vec<_>>())
-    // {
-    //     println!("Got an error while storing data to file..");
-    //     println!("{:?}", err);
-    // }
+    files.insert(file.id, file.clone());
 
-    (StatusCode::CREATED, Json(file))
+    if let Err(err) = state.db.write().unwrap().put(DB_KEY, &files) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(DBError::WriteError(format!(
+                "{:?}",
+                err.msg
+                    .unwrap_or("Could not write data to file".to_string())
+            ))),
+        )
+            .into_response();
+    };
+
+    (StatusCode::CREATED, Json(file)).into_response()
 }
 
 /// Parameters for updating a file
@@ -151,55 +163,71 @@ pub struct FileUpdateParams {
     ),
     responses(
         (status = 200, description = "File updated successfully"),
-        (status = 404, description = "No file with this id found")
+        (status = 404, description = "No file with this id found", body = DBError, example = json!(DBError::KeyNotFound(String::from("key not found in storage"))))
     )
 )]
 async fn files_update(
     Path(id): Path<Uuid>,
-    State(db): State<Db>,
+    State(state): State<Arc<AppState>>,
     Json(input): Json<FileUpdateParams>,
-) -> Result<impl IntoResponse, StatusCode> {
-    let mut file = db
+) -> impl IntoResponse {
+    let mut files = state
+        .db
         .read()
         .unwrap()
-        .get(&id)
-        .cloned()
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .get_unwrap::<Files>(DB_KEY)
+        .unwrap();
 
-    if let Some(name) = input.name {
-        file.name = name;
+    if let Some(file) = files.get_mut(&id) {
+        if let Some(name) = input.name {
+            file.name = name;
+        }
+
+        if let Some(enabled) = input.enabled {
+            file.enabled = enabled;
+        }
+
+        if let Some(path) = input.path {
+            file.path = path;
+        }
+
+        if let Some(mqtt_topic) = input.mqtt_topic {
+            file.mqtt_topic = mqtt_topic;
+        }
+
+        if let Some(last_update_utc) = input.last_update_utc {
+            file.last_update_utc = last_update_utc;
+        }
+
+        if let Some(update_state) = input.update_state {
+            file.update_state = update_state;
+        }
+
+        if let Some(last_version) = input.last_version {
+            file.last_version = last_version;
+        }
+    } else {
+        // no entry with this id found
+        return (
+            StatusCode::NOT_FOUND,
+            Json(DBError::KeyNotFound("key not found in storage".to_string())),
+        )
+            .into_response();
     }
 
-    if let Some(enabled) = input.enabled {
-        file.enabled = enabled;
+    // write to file db
+    match state.db.write().unwrap().put(DB_KEY, &files) {
+        Ok(()) => (StatusCode::OK, Json(files.get(&id))).into_response(),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(DBError::WriteError(format!(
+                "{:?}",
+                err.msg
+                    .unwrap_or("Could not write file data to file".to_string())
+            ))),
+        )
+            .into_response(),
     }
-
-    if let Some(path) = input.path {
-        file.path = path;
-    }
-
-    if let Some(mqtt_topic) = input.mqtt_topic {
-        file.mqtt_topic = mqtt_topic;
-    }
-
-    if let Some(last_update_utc) = input.last_update_utc {
-        file.last_update_utc = last_update_utc;
-    }
-
-    if let Some(update_state) = input.update_state {
-        file.update_state = update_state;
-    }
-
-    if let Some(last_version) = input.last_version {
-        file.last_version = last_version;
-    }
-
-    db.write().unwrap().insert(file.id, file.clone());
-
-    // store changes to local file.
-    store_to_system_file(db);
-
-    Ok(Json(file))
 }
 
 /// Delete a file.
@@ -215,17 +243,43 @@ async fn files_update(
     ),
     responses(
         (status = 204, description = "File deleted successfully"),
-        (status = 404, description = "No file with this id found")
+        (status = 404, description = "File in DB not found", body = DBError, example = json!(DBError::KeyNotFound(String::from("key not found in storage")))),
+        (status = 500, description = "Error on DB write operation", body = DBError, example = json!(DBError::WriteError(String::from("Could not write data to file"))))
     )
 )]
-async fn files_delete(Path(id): Path<Uuid>, State(db): State<Db>) -> impl IntoResponse {
-    if db.write().unwrap().remove(&id).is_some() {
-        // store changes to local file.
-        store_to_system_file(db);
+async fn files_delete(
+    Path(id): Path<Uuid>,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let mut files = state
+        .db
+        .read()
+        .unwrap()
+        .get_unwrap::<Files>(DB_KEY)
+        .unwrap();
 
-        StatusCode::NO_CONTENT
+    // try to remove locally
+    if let None = files.remove(&id) {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(DBError::KeyNotFound("key not found in storage".to_string())),
+        )
+            .into_response();
+    }
+
+    // write to file db
+    if let Err(err) = state.db.write().unwrap().put(DB_KEY, &files) {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(DBError::WriteError(format!(
+                "{:?}",
+                err.msg
+                    .unwrap_or("Could not write file data to file".to_string())
+            ))),
+        )
+            .into_response()
     } else {
-        StatusCode::NOT_FOUND
+        (StatusCode::NO_CONTENT, Json({})).into_response()
     }
 }
 
@@ -241,16 +295,29 @@ pub struct File {
     path: String,
     mqtt_topic: String,
 }
+type Files = HashMap<Uuid, File>;
 
-/// Local state for file routes
-type Db = Arc<RwLock<HashMap<Uuid, File>>>;
+/// File DB operation errors
+#[derive(Serialize, Deserialize, ToSchema)]
+pub enum DBError {
+    /// Key not found in storage file.
+    #[schema(example = "Key not found in storage file")]
+    KeyNotFound(String),
+    /// DB file not writeable.
+    #[schema(example = "Could not write data to file")]
+    WriteError(String),
+}
 
-/// Local function to store changes to file system.
-fn store_to_system_file(db: Db) {
-    if let Err(err) =
-        store::save_files_data(db.read().unwrap().values().cloned().collect::<Vec<_>>())
+fn init_state_if_necessary(state: &Arc<AppState>) {
+    if state
+        .db
+        .read()
+        .unwrap()
+        .get_unwrap::<Files>(DB_KEY)
+        .is_err()
     {
-        println!("Got an error while storing data to file..");
-        println!("{:?}", err);
+        println!("need to update inital files state");
+
+        let _ = state.db.write().unwrap().put(DB_KEY, &Files::new());
     }
 }
