@@ -28,6 +28,7 @@ fn watch<P: AsRef<Path>>(path: P) -> Result<()> {
         .watcher()
         .watch(path.as_ref(), RecursiveMode::NonRecursive)?;
 
+    // TODO: pack in task because this blocks the whole execution
     for res in rx {
         match res {
             // If there is a match execute the logevent function with the event::notify::Event as input
