@@ -4,7 +4,6 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 mod plugins;
-// import routes
 mod router;
 mod store;
 
@@ -32,6 +31,9 @@ pub async fn start(port: u16) {
     )]
     struct ApiDoc;
 
+    // init application state
+    let app_state = store::init_state();
+
     // build our application with a route
     let app = Router::new()
         // .merge(router::info::routes())
@@ -40,7 +42,8 @@ pub async fn start(port: u16) {
             "/",
             get(|| async { Redirect::permanent(&"/swagger-ui".to_string()) }),
         )
-        .nest("/api", router::routes());
+        .nest("/api", router::routes())
+        .with_state(app_state);
 
     // init plugins
     plugins::init();

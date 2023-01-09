@@ -1,4 +1,4 @@
-use crate::server::store;
+use crate::server::store::{self, AppState};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -15,7 +15,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 /// exports all routes from this module as router
-pub fn routes() -> Router {
+pub fn routes() -> Router<Arc<AppState>> {
     // build local state
     let db = Db::default();
 

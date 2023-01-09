@@ -1,7 +1,14 @@
 use super::router::{files::File, settings::Broker};
+use microkv::MicroKV;
 use serde::{Deserialize, Serialize};
+use std::{
+    path::Path,
+    sync::{Arc, RwLock},
+};
 
 static FILE_NAME: &str = "C:/ProgramData/Tauri/EH Version Scraper/backendDB.json";
+
+static FILE_DB_PATH: &str = "C:/ProgramData/Tauri/EH Version Scraper";
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct FileDB {
@@ -9,6 +16,24 @@ struct FileDB {
     files: Vec<File>,
     #[serde(default)]
     broker: Broker,
+}
+
+/// Shared application state
+pub struct AppState {
+    pub db: Arc<RwLock<MicroKV>>,
+}
+
+pub fn init_state() -> Arc<AppState> {
+    // connect to db
+    let some_path = Path::new(FILE_DB_PATH);
+    let database: MicroKV = MicroKV::open_with_base_path("application_db", some_path.to_path_buf())
+        .expect("Failed to create MicroKV from a stored file or create MicroKV for this file")
+        .set_auto_commit(true);
+
+    // create app state
+    return Arc::new(AppState {
+        db: Arc::new(RwLock::new(database)),
+    });
 }
 
 pub fn save_files_data(files: Vec<File>) -> Result<(), &'static str> {

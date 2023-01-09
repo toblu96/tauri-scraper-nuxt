@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::{
     routing::{get, Router},
     Json,
@@ -5,8 +7,10 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+use crate::server::store::AppState;
+
 /// exports all routes from this module as router
-pub fn routes() -> Router {
+pub fn routes() -> Router<Arc<AppState>> {
     Router::new().route("/info", get(get_info))
 }
 
