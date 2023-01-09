@@ -21,7 +21,7 @@ pub async fn start(port: u16) {
             router::settings::settings_update,
         ),
         components(
-            schemas(router::info::Info, router::files::File, router::files::FileUpdateParams, router::files::FileCreateParams, router::settings::Broker, router::settings::BrokerUpdateParams)
+            schemas(router::info::Info, router::files::File, router::files::FileUpdateParams, router::files::FileCreateParams, router::settings::Broker, router::settings::BrokerUpdateParams, router::settings::DBError)
         ),
         tags(
             (name = "info", description = "Information about this application"),

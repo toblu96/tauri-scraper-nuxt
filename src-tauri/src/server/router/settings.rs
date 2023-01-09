@@ -1,4 +1,4 @@
-use crate::server::store::{self, AppState};
+use crate::server::store::AppState;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -7,47 +7,16 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
-use uuid::Uuid;
+
+static DB_KEY: &str = "broker";
 
 /// exports all routes from this module as router
 pub fn routes() -> Router<Arc<AppState>> {
-    // build local state
-    let db = Db::default();
-
-    let data_init = store::load_broker_data();
-    match data_init {
-        Ok(broker) => {
-            let mut n = db.write().unwrap();
-            *n = broker;
-        }
-        Err(err) => {
-            println!("{}", err);
-            // Not able to parse broker part in json, create default one
-            if err.to_string().contains("missing field `broker`") {
-                println!("broker field is missing");
-            }
-        }
-    }
-
-    // check if broker settings are present in file, init with data
-    if db.read().unwrap().id.to_string() == "00000000-0000-0000-0000-000000000000" {
-        let mut n = db.write().unwrap();
-        *n = Broker {
-            id: Uuid::new_v4(),
-            client_id: "mqtt-client-1".to_string(),
-            protocol: "mqtt://".to_string(),
-            host: "localhost".to_string(),
-            port: 1883,
-            ..Default::default()
-        };
-    }
-
     Router::new()
         .route("/settings/broker", get(settings_index))
         .route("/settings/broker/:id", patch(settings_update))
-        .with_state(db)
 }
 
 /// Show application broker settings.
@@ -59,12 +28,28 @@ pub fn routes() -> Router<Arc<AppState>> {
         path = "/settings/broker",
         tag = "settings",
         responses(
-            (status = 200, description = "List broker settings successfully", body = Broker)
+            (status = 200, description = "List broker settings successfully", body = Broker),
+            (status = 404, description = "Settings in DB not found", body = DBError, example = json!(DBError::KeyNotFound(String::from("key not found in storage"))))
         )
     )]
-pub async fn settings_index(State(db): State<Db>) -> impl IntoResponse {
-    let broker = db.read().unwrap().clone();
-    (StatusCode::OK, Json(broker))
+pub async fn settings_index(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    // init data if store empty
+    init_state_if_necessary(&state);
+
+    match state.db.read().unwrap().get_unwrap::<Broker>(DB_KEY) {
+        Ok(broker) => (StatusCode::OK, Json(broker)).into_response(),
+        Err(err) => {
+            println!("Error: {err:?}");
+            (
+                StatusCode::NOT_FOUND,
+                Json(DBError::KeyNotFound(format!(
+                    "{:?}",
+                    err.msg.unwrap_or("key not found in storage".to_string())
+                ))),
+            )
+                .into_response()
+        }
+    }
 }
 
 /// Parameters for updating the broker settings
@@ -105,61 +90,83 @@ pub struct BrokerUpdateParams {
     tag = "settings",
     request_body = BrokerUpdateParams,
     responses(
-        (status = 200, description = "Broker settings updated successfully")
+        (status = 200, description = "Broker settings updated successfully", body = Broker),
+        (status = 404, description = "Settings in DB not found", body = DBError, example = json!(DBError::KeyNotFound(String::from("key not found in storage")))),
+        (status = 500, description = "Settings in DB not found", body = DBError, example = json!(DBError::WriteError(String::from("Could not write data to file"))))
     )
 )]
 async fn settings_update(
-    State(db): State<Db>,
+    State(state): State<Arc<AppState>>,
     Json(input): Json<BrokerUpdateParams>,
 ) -> impl IntoResponse {
-    let mut broker = db.read().unwrap().clone();
+    let data = state.db.read().unwrap().get_unwrap::<Broker>(DB_KEY);
+    match data {
+        Ok(mut broker) => {
+            // check for changes on each provided input param
+            if let Some(client_id) = input.client_id {
+                broker.client_id = client_id;
+            }
 
-    if let Some(client_id) = input.client_id {
-        broker.client_id = client_id;
+            if let Some(device_group) = input.device_group {
+                broker.device_group = device_group;
+            }
+
+            if let Some(device_id) = input.device_id {
+                broker.device_id = device_id;
+            }
+
+            if let Some(host) = input.host {
+                broker.host = host;
+            }
+
+            if let Some(password) = input.password {
+                broker.password = password;
+            }
+
+            if let Some(protocol) = input.protocol {
+                broker.protocol = protocol;
+            }
+
+            if let Some(username) = input.username {
+                broker.username = username;
+            }
+
+            if let Some(port) = input.port {
+                broker.port = port;
+            }
+
+            // write to file db
+            match state.db.write().unwrap().put(DB_KEY, &broker) {
+                Ok(()) => (StatusCode::OK, Json(broker)).into_response(),
+                Err(err) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(DBError::WriteError(format!(
+                        "{:?}",
+                        err.msg
+                            .unwrap_or("Could not write data to file".to_string())
+                    ))),
+                )
+                    .into_response(),
+            }
+        }
+        Err(err) => {
+            println!("Error: {err:?}");
+            (
+                StatusCode::NOT_FOUND,
+                Json(DBError::KeyNotFound(format!(
+                    "{:?}",
+                    err.msg.unwrap_or("key not found in storage".to_string())
+                ))),
+            )
+                .into_response()
+        }
     }
-
-    if let Some(device_group) = input.device_group {
-        broker.device_group = device_group;
-    }
-
-    if let Some(device_id) = input.device_id {
-        broker.device_id = device_id;
-    }
-
-    if let Some(host) = input.host {
-        broker.host = host;
-    }
-
-    if let Some(password) = input.password {
-        broker.password = password;
-    }
-
-    if let Some(protocol) = input.protocol {
-        broker.protocol = protocol;
-    }
-
-    if let Some(username) = input.username {
-        broker.username = username;
-    }
-
-    if let Some(port) = input.port {
-        broker.port = port;
-    }
-
-    let mut n = db.write().unwrap();
-    *n = broker.clone();
-    drop(n); // release lock so db can be read again
-
-    // store changes to local file.
-    store_to_system_file(db.clone());
-
-    (StatusCode::OK, Json(broker))
 }
 
 /// Broker schema.
 #[derive(Debug, Serialize, Deserialize, ToSchema, Clone, Default)]
 pub struct Broker {
-    id: Uuid,
+    // id: Uuid,
     client_id: String,
     device_group: String,
     device_id: String,
@@ -170,13 +177,29 @@ pub struct Broker {
     username: String,
 }
 
-/// Local state for file routes
-type Db = Arc<RwLock<Broker>>;
+/// File DB operation errors
+#[derive(Serialize, Deserialize, ToSchema)]
+pub enum DBError {
+    /// Key not found in storage file.
+    #[schema(example = "Key not found in storage file")]
+    KeyNotFound(String),
+    /// DB file not writeable.
+    #[schema(example = "Could not write data to file")]
+    WriteError(String),
+}
 
-/// Local function to store changes to file system.
-fn store_to_system_file(db: Db) {
-    if let Err(err) = store::save_broker_data(db.read().unwrap().clone()) {
-        println!("Got an error while storing data to file..");
-        println!("{:?}", err);
+fn init_state_if_necessary(state: &Arc<AppState>) {
+    if state
+        .db
+        .read()
+        .unwrap()
+        .get_unwrap::<Broker>(DB_KEY)
+        .is_err()
+    {
+        println!("need to update inital broker state");
+        let broker = Broker {
+            ..Default::default()
+        };
+        let _ = state.db.write().unwrap().put(DB_KEY, &broker);
     }
 }
