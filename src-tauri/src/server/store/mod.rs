@@ -8,14 +8,6 @@ use std::{
 
 static FILE_DB_PATH: &str = "C:/ProgramData/Tauri/EH Version Scraper";
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct FileDB {
-    #[serde(default)]
-    files: Vec<File>,
-    #[serde(default)]
-    broker: Broker,
-}
-
 /// Shared application state
 pub struct AppState {
     pub db: Arc<RwLock<MicroKV>>,
