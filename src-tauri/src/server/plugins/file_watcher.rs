@@ -9,7 +9,6 @@ use std::time::Duration;
 pub fn main(sender: Sender<String>) {
     // new task required for watcher
     tokio::spawn(async move {
-        let _ = sender.send("hello from inside".to_string());
         static FILE_NAME: &str = "C:/Users/i40010702/Desktop/test/jsonDB.json";
         let path = Path::new(FILE_NAME);
         println!("watching {:?}", path);
@@ -35,24 +34,24 @@ fn watch<P: AsRef<Path>>(path: P, sender: Sender<String>) -> Result<()> {
         RecursiveMode::NonRecursive,
     )?;
 
-    // Check for file change events
-    for res in rx.recv() {
-        match res {
-            Ok(event) => {
-                if event[0].kind == DebouncedEventKind::Any {
-                    println!("changed: {:?}", event);
-                    // Communicate to outside world
-                    if let Err(e) = sender.send(String::from(format!(
-                        "File change detected: {:?}",
-                        event[0].path
-                    ))) {
-                        println!("Got a tx sending error: {}", e)
+    // Check for file change events - loop needed to keep rx session alive!!!!
+    loop {
+        for res in rx.recv() {
+            match res {
+                Ok(event) => {
+                    if event[0].kind == DebouncedEventKind::Any {
+                        println!("changed: {:?}", event);
+                        // Communicate to outside world
+                        if let Err(e) = sender.send(String::from(format!(
+                            "File change detected: {:?}",
+                            event[0].path
+                        ))) {
+                            println!("Got a tx sending error: {}", e)
+                        }
                     }
                 }
+                Err(e) => println!("watch error: {:?}", e),
             }
-            Err(e) => println!("watch error: {:?}", e),
         }
     }
-
-    Ok(())
 }
