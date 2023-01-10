@@ -1,39 +1,55 @@
 use notify::{RecursiveMode, Result};
-use notify_debouncer_mini::new_debouncer;
+use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
 use std::path::Path;
 use std::sync::mpsc::channel;
+use tokio::sync::broadcast::Sender;
+
 use std::time::Duration;
 
-pub fn main() {
-    static FILE_NAME: &str = "C:/Users/i40010702/Desktop/test/jsonDB.json";
-    let path = Path::new(FILE_NAME);
-    println!("watching {:?}", path);
-    if let Err(e) = watch(path) {
-        println!("error: {:?}", e)
-    }
+pub fn main(sender: Sender<String>) {
+    // new task required for watcher
+    tokio::spawn(async move {
+        let _ = sender.send("hello from inside".to_string());
+        static FILE_NAME: &str = "C:/Users/i40010702/Desktop/test/jsonDB.json";
+        let path = Path::new(FILE_NAME);
+        println!("watching {:?}", path);
+        if let Err(e) = watch(path, sender) {
+            println!("error: {:?}", e)
+        }
+    });
 }
 
-fn watch<P: AsRef<Path>>(path: P) -> Result<()> {
+fn watch<P: AsRef<Path>>(path: P, sender: Sender<String>) -> Result<()> {
     let (tx, rx) = channel();
 
-    // Automatically select the best implementation for your platform.
-    // You can also access each implementation directly e.g. INotifyWatcher.
-    // let mut watcher = RecommendedWatcher::new(tx, Config::default().with_compare_contents(true))?;
+    // Create new debounced file watcher instance
     let mut debouncer = new_debouncer(Duration::from_secs(1), None, tx)?;
 
-    // Add a path to be watched. All files and directories at that path and
-    // below will be monitored for changes.
-    // watcher.watch(path.as_ref(), RecursiveMode::NonRecursive)?;
+    // Add all path to be watched.
     debouncer
         .watcher()
         .watch(path.as_ref(), RecursiveMode::NonRecursive)?;
 
-    // TODO: pack in task because this blocks the whole execution
-    for res in rx {
+    debouncer.watcher().watch(
+        Path::new("C:/Users/i40010702/Desktop/test/jsonDB - Kopie.json"),
+        RecursiveMode::NonRecursive,
+    )?;
+
+    // Check for file change events
+    for res in rx.recv() {
         match res {
-            // If there is a match execute the logevent function with the event::notify::Event as input
-            // TODO: Only check for event.kind == Any (not AnyContinous because these are fired multiple times)
-            Ok(event) => println!("changed: {:?}", event),
+            Ok(event) => {
+                if event[0].kind == DebouncedEventKind::Any {
+                    println!("changed: {:?}", event);
+                    // Communicate to outside world
+                    if let Err(e) = sender.send(String::from(format!(
+                        "File change detected: {:?}",
+                        event[0].path
+                    ))) {
+                        println!("Got a tx sending error: {}", e)
+                    }
+                }
+            }
             Err(e) => println!("watch error: {:?}", e),
         }
     }
