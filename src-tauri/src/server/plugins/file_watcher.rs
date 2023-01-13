@@ -54,7 +54,7 @@ async fn async_watch<P: AsRef<Path>>(
                 println!("changed: {:?}", event);
                 for path in event.paths.iter() {
                     if let Err(err) = sender
-                        .write()
+                        .read()
                         .unwrap()
                         .send(String::from(path.to_string_lossy()))
                     {
