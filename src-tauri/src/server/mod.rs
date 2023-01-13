@@ -43,10 +43,10 @@ pub async fn start(port: u16) {
             get(|| async { Redirect::permanent(&"/swagger-ui".to_string()) }),
         )
         .nest("/api", router::routes())
-        .with_state(app_state);
+        .with_state(app_state.clone());
 
     // init plugins
-    plugins::init();
+    plugins::init(app_state);
 
     // run it
     let addr = SocketAddr::from(([0, 0, 0, 0], port));

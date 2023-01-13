@@ -1,57 +1,70 @@
-use notify::{RecursiveMode, Result};
-use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
-use std::path::Path;
-use std::sync::mpsc::channel;
+use futures::{
+    channel::mpsc::{channel, Receiver},
+    SinkExt, StreamExt,
+};
+use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use std::{
+    path::Path,
+    sync::{Arc, RwLock},
+};
 use tokio::sync::broadcast::Sender;
 
-use std::time::Duration;
+pub fn main(sender: Arc<RwLock<Sender<String>>>) {
+    static FILE_NAME: &str = "C:/Users/i40010702/Desktop/test/jsonDB.json";
+    let path = Path::new(FILE_NAME);
+    println!("watching {:?}", path);
 
-pub fn main(sender: Sender<String>) {
     // new task required for watcher
     tokio::spawn(async move {
-        static FILE_NAME: &str = "C:/Users/i40010702/Desktop/test/jsonDB.json";
-        let path = Path::new(FILE_NAME);
-        println!("watching {:?}", path);
-        if let Err(e) = watch(path, sender) {
+        if let Err(e) = async_watch(path, sender).await {
             println!("error: {:?}", e)
         }
     });
 }
 
-fn watch<P: AsRef<Path>>(path: P, sender: Sender<String>) -> Result<()> {
-    let (tx, rx) = channel();
+fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
+    let (mut tx, rx) = channel(1);
 
-    // Create new debounced file watcher instance
-    let mut debouncer = new_debouncer(Duration::from_secs(1), None, tx)?;
-
-    // Add all path to be watched.
-    debouncer
-        .watcher()
-        .watch(path.as_ref(), RecursiveMode::NonRecursive)?;
-
-    debouncer.watcher().watch(
-        Path::new("C:/Users/i40010702/Desktop/test/jsonDB - Kopie.json"),
-        RecursiveMode::NonRecursive,
+    // create watcher instance
+    let watcher = RecommendedWatcher::new(
+        move |res| {
+            futures::executor::block_on(async {
+                tx.send(res).await.unwrap();
+            })
+        },
+        Config::default(),
     )?;
 
-    // Check for file change events - loop needed to keep rx session alive!!!!
-    loop {
-        for res in rx.recv() {
-            match res {
-                Ok(event) => {
-                    if event[0].kind == DebouncedEventKind::Any {
-                        println!("changed: {:?}", event);
-                        // Communicate to outside world
-                        if let Err(e) = sender.send(String::from(format!(
-                            "File change detected: {:?}",
-                            event[0].path
-                        ))) {
-                            println!("Got a tx sending error: {}", e)
-                        }
-                    }
+    Ok((watcher, rx))
+}
+
+async fn async_watch<P: AsRef<Path>>(
+    path: P,
+    sender: Arc<RwLock<Sender<String>>>,
+) -> notify::Result<()> {
+    let (mut watcher, mut rx) = async_watcher()?;
+
+    // Add a path to be watched.
+    watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
+
+    // check for changes on one of the watched paths
+    while let Some(res) = rx.next().await {
+        match res {
+            Ok(event) => {
+                println!("changed: {:?}", event);
+                for path in event.paths.iter() {
+                    if let Err(err) = sender
+                        .write()
+                        .unwrap()
+                        .send(String::from(path.to_string_lossy()))
+                    {
+                        println!("Could not send file change event due to: {err:?}")
+                    };
                 }
-                Err(e) => println!("watch error: {:?}", e),
             }
+            Err(e) => println!("watch error: {:?}", e),
         }
     }
+
+    Ok(())
 }
