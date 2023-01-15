@@ -59,7 +59,6 @@ dependencies = [
  "futures",
  "microkv",
  "notify 5.0.0",
- "notify-debouncer-mini",
  "serde",
  "serde_json",
  "tauri",
@@ -941,7 +940,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ab7d1bd1bd33cc98b0889831b72da23c0aa4df9cec7e0702f46ecea04b35db6"
 dependencies = [
  "bitflags",
- "fsevent-sys 2.0.1",
+ "fsevent-sys",
 ]
 
 [[package]]
@@ -949,15 +948,6 @@ name = "fsevent-sys"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f41b048a94555da0f42f1d632e2e19510084fb8e303b0daa2816e733fb3644a0"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "fsevent-sys"
-version = "4.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76ee7a02da4d231650c7cea31349b889be2f45ddb3ef3032d2ec8185f6313fd2"
 dependencies = [
  "libc",
 ]
@@ -2166,7 +2156,7 @@ dependencies = [
  "bitflags",
  "filetime",
  "fsevent",
- "fsevent-sys 2.0.1",
+ "fsevent-sys",
  "inotify 0.7.1",
  "libc",
  "mio 0.6.23",
@@ -2182,24 +2172,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2c66da08abae1c024c01d635253e402341b4060a12e99b31c7594063bf490a"
 dependencies = [
  "bitflags",
- "crossbeam-channel",
  "filetime",
- "fsevent-sys 4.1.0",
  "inotify 0.9.6",
  "kqueue",
  "libc",
  "mio 0.8.5",
  "walkdir",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "notify-debouncer-mini"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e23e9fa24f094b143c1eb61f90ac6457de87be6987bc70746e0179f7dbc9007b"
-dependencies = [
- "notify 5.0.0",
 ]
 
 [[package]]

@@ -3,6 +3,7 @@ use crate::server::router::settings::Broker;
 use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
 
+mod debouncer;
 mod file_watcher;
 
 pub fn init(app_state: Arc<AppState>) {

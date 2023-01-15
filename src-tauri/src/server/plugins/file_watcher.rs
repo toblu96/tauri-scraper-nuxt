@@ -6,8 +6,11 @@ use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::{
     path::Path,
     sync::{Arc, RwLock},
+    time::Duration,
 };
 use tokio::sync::broadcast::Sender;
+
+use super::debouncer;
 
 pub fn main(sender: Arc<RwLock<Sender<String>>>) {
     static FILE_NAME: &str = "C:/Users/i40010702/Desktop/test/jsonDB.json";
@@ -46,20 +49,27 @@ async fn async_watch<P: AsRef<Path>>(
 
     // Add a path to be watched.
     watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
+    watcher.watch(
+        Path::new("C:/Users/i40010702/Desktop/test/jsonDB - Kopie.json").as_ref(),
+        RecursiveMode::Recursive,
+    )?;
 
     // check for changes on one of the watched paths
+    let mut debouncer = debouncer::Bouncer::new(Duration::from_secs(1));
     while let Some(res) = rx.next().await {
         match res {
             Ok(event) => {
-                println!("changed: {:?}", event);
                 for path in event.paths.iter() {
-                    if let Err(err) = sender
-                        .read()
-                        .unwrap()
-                        .send(String::from(path.to_string_lossy()))
-                    {
-                        println!("Could not send file change event due to: {err:?}")
-                    };
+                    // debounce change events from listener (separate for each file path)
+                    if let Some(_) = debouncer.debounce("path".to_string(), || return true) {
+                        if let Err(err) = sender
+                            .read()
+                            .unwrap()
+                            .send(String::from(path.to_string_lossy()))
+                        {
+                            println!("Could not send file change event due to: {err:?}")
+                        };
+                    }
                 }
             }
             Err(e) => println!("watch error: {:?}", e),
