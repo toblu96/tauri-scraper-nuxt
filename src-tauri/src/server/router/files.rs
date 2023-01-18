@@ -286,16 +286,16 @@ async fn files_delete(
 /// Files schema.
 #[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 pub struct File {
-    id: Uuid,
-    name: String,
-    enabled: bool,
-    last_update_utc: String, // timestamp UTC
-    update_state: String,    // status of update - e.g. could not read | successful
-    last_version: String,    // latest file version
-    path: String,
-    mqtt_topic: String,
+    pub id: Uuid,
+    pub name: String,
+    pub enabled: bool,
+    pub last_update_utc: String, // timestamp UTC
+    pub update_state: String,    // status of update - e.g. could not read | successful
+    pub last_version: String,    // latest file version
+    pub path: String,
+    pub mqtt_topic: String,
 }
-type Files = HashMap<Uuid, File>;
+pub type Files = HashMap<Uuid, File>;
 
 /// File DB operation errors
 #[derive(Serialize, Deserialize, ToSchema)]

@@ -1,7 +1,10 @@
+use super::debouncer;
+use crate::server::{router::files::Files, store::AppState};
 use futures::{
     channel::mpsc::{channel, Receiver},
     SinkExt, StreamExt,
 };
+use microkv::MicroKV;
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::{
     path::Path,
@@ -9,22 +12,50 @@ use std::{
     time::Duration,
 };
 use tokio::sync::broadcast::Sender;
+use tokio::task::JoinHandle;
 
-use super::debouncer;
-
-pub fn main(sender: Arc<RwLock<Sender<String>>>) {
-    static FILE_NAME: &str = "C:/Users/i40010702/Desktop/test/jsonDB.json";
-    let path = Path::new(FILE_NAME);
-    println!("watching {:?}", path);
-
-    // new task required for watcher
-    tokio::spawn(async move {
-        if let Err(e) = async_watch(path, sender).await {
-            println!("error: {:?}", e)
-        }
-    });
+pub struct FileWatcher {
+    sender: Arc<RwLock<Sender<String>>>,
+    store: Arc<RwLock<MicroKV>>,
+    watcher_thread: JoinHandle<()>,
 }
 
+impl FileWatcher {
+    /// Init file watcher plugin
+    pub fn init(sender: Arc<RwLock<Sender<String>>>, app_state: &Arc<AppState>) -> Self {
+        // start file watcher
+        let watch_store = app_state.db.clone();
+        let watch_sender = sender.clone();
+        let watcher_thread = tokio::spawn(async move {
+            if let Err(e) = async_watch(watch_store, watch_sender).await {
+                println!("error: {:?}", e)
+            }
+        });
+
+        FileWatcher {
+            sender,
+            store: app_state.db.clone(),
+            watcher_thread,
+        }
+    }
+
+    /// Refresh currently watched files
+    pub fn refresh(&mut self) {
+        println!("refresh watchers");
+        // first drop all active file watchers and end task
+        self.watcher_thread.abort();
+        // add new file watchers by starting them in new task
+        let watch_store = self.store.clone();
+        let watch_sender = self.sender.clone();
+        self.watcher_thread = tokio::spawn(async move {
+            if let Err(e) = async_watch(watch_store, watch_sender).await {
+                println!("error: {:?}", e)
+            }
+        });
+    }
+}
+
+/// Create new file watcher instance
 fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
     let (mut tx, rx) = channel(1);
 
@@ -41,18 +72,37 @@ fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Resul
     Ok((watcher, rx))
 }
 
-async fn async_watch<P: AsRef<Path>>(
-    path: P,
+/// Start file watchers for all configured files
+async fn async_watch(
+    store: Arc<RwLock<MicroKV>>,
     sender: Arc<RwLock<Sender<String>>>,
 ) -> notify::Result<()> {
     let (mut watcher, mut rx) = async_watcher()?;
 
-    // Add a path to be watched.
-    watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
-    watcher.watch(
-        Path::new("C:/Users/i40010702/Desktop/test/jsonDB - Kopie.json").as_ref(),
-        RecursiveMode::Recursive,
-    )?;
+    // get all files from db and loop through it to add the watchers
+    let files = store.read().unwrap().get_unwrap::<Files>("files");
+    match files {
+        Ok(files) => {
+            // if files found, watch them for changes
+            for (_uuid, file) in files {
+                let path = &file.path;
+                if let Err(err) = watcher.watch(Path::new(path), RecursiveMode::Recursive) {
+                    println!("Could not add file watcher '{path}' due to: {err:?}");
+                };
+            }
+        }
+        Err(err) => {
+            // if no file found. skip this part
+            println!("Could not add file watcher because there are no configured ones. {err:?}")
+        }
+    }
+    // always watch for local db file changes
+    let db_path = crate::server::store::FILE_DB_PATH;
+    let db_name = crate::server::store::FILE_DB_NAME;
+    let db_string = format!("{db_path}/{db_name}.kv");
+    if let Err(err) = watcher.watch(Path::new(&db_string), RecursiveMode::Recursive) {
+        println!("Could not add local db watcher '{db_string}' due to: {err:?}");
+    };
 
     // check for changes on one of the watched paths
     let mut debouncer = debouncer::Bouncer::new(Duration::from_secs(1));
@@ -61,11 +111,10 @@ async fn async_watch<P: AsRef<Path>>(
             Ok(event) => {
                 for path in event.paths.iter() {
                     // debounce change events from listener (separate for each file path)
-                    if let Some(_) = debouncer.debounce("path".to_string(), || return true) {
-                        if let Err(err) = sender
-                            .read()
-                            .unwrap()
-                            .send(String::from(path.to_string_lossy()))
+                    let path_string = String::from(path.to_string_lossy());
+                    if let Some(_) = debouncer.debounce(path_string.clone(), || return true) {
+                        if let Err(err) =
+                            sender.read().unwrap().send(path_string.replace("\\", "/"))
                         {
                             println!("Could not send file change event due to: {err:?}")
                         };
