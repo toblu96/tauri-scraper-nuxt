@@ -85,6 +85,10 @@ async fn async_watch(
         Ok(files) => {
             // if files found, watch them for changes
             for (_uuid, file) in files {
+                // skip disabled file watchers
+                if !&file.enabled {
+                    continue;
+                }
                 let path = &file.path;
                 if let Err(err) = watcher.watch(Path::new(path), RecursiveMode::Recursive) {
                     println!("Could not add file watcher '{path}' due to: {err:?}");
