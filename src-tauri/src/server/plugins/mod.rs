@@ -1,9 +1,13 @@
 use super::store::AppState;
 use crate::server::router::settings::Broker;
-use std::sync::{Arc, RwLock};
+use std::{
+    path::Path,
+    sync::{Arc, RwLock},
+};
 use tokio::sync::broadcast;
 
 mod debouncer;
+mod file_version_reader;
 mod file_watcher;
 
 pub fn init(app_state: Arc<AppState>) {
@@ -27,6 +31,33 @@ pub fn init(app_state: Arc<AppState>) {
             }
 
             // TODO: handle other file changes
+            // handle different file types
+            if let Some(os_str) = Path::new(&msg).extension() {
+                if let Some(extension) = os_str.to_str() {
+                    // let Some(extension) = os_str.to_str();
+                    match extension {
+                        "exe" | "dll" => {
+                            // get file version from file properties
+                            println!("exe or dll sent... {msg}");
+                            let file_version =
+                                file_version_reader::get_file_version_from_file_properties(&msg);
+                            match file_version {
+                                Ok(version) => {
+                                    println!("Got file version {version}")
+                                }
+                                Err(err) => {
+                                    println!("Could not get file version due to: {err:?}")
+                                }
+                            }
+                        }
+                        _ => {
+                            // get current time stamp and file hash - no file version available
+                            println!("Could not read file version due to unknown file type '{extension}'.");
+                        }
+                    }
+                }
+            }
+
             // Check broker settings
             let broker = app_state
                 .db
