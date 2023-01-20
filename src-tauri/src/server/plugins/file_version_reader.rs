@@ -1,3 +1,5 @@
+use sha2::{Digest, Sha256};
+
 /// Gets a file version from the file properties.
 ///
 /// Can be used for `.exe` and `.dll` files.
@@ -11,10 +13,26 @@ pub fn get_file_version_from_file_properties(path: &str) -> Result<String, Strin
     }
 }
 
-/// Gets the file hash from a file content.
+/// Gets the file hash from the file metadata.
 ///
 /// Can be used for files without a specific file version.
-pub fn get_file_hash(path: &str) -> Result<String, String> {
-    println!("hell ho");
-    Ok("jop".to_string())
+pub fn get_file_meta_hash(path: &str) -> Result<String, String> {
+    let file = std::fs::File::open(&path);
+
+    match file {
+        Ok(file) => {
+            let metadata = file.metadata();
+            match metadata {
+                Ok(meta) => {
+                    let mut hasher = Sha256::new();
+                    hasher.update(format!("{meta:?}"));
+                    let hash = hasher.finalize();
+
+                    Ok(format!("{:x}", hash))
+                }
+                Err(err) => Err(format!("Could not open file for hashing content. {err:?}")),
+            }
+        }
+        Err(err) => Err(format!("Could not open file for hashing content. {err:?}")),
+    }
 }

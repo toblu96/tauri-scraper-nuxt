@@ -42,36 +42,7 @@ pub fn init(app_state: Arc<AppState>) {
                                 file_version_reader::get_file_version_from_file_properties(&msg);
                             match file_version {
                                 Ok(version) => {
-                                    // Update file state with version
-                                    let mut files = app_state
-                                        .db
-                                        .read()
-                                        .unwrap()
-                                        .get_unwrap::<Files>("files")
-                                        .unwrap();
-                                    // update file version for all files with matching path
-                                    let files_iterator = &mut files;
-                                    for (_uuid, file) in files_iterator {
-                                        // skip changes if path does not match
-                                        if file.path != msg {
-                                            continue;
-                                        }
-
-                                        file.last_version = version.clone();
-                                        file.last_update_utc =
-                                            chrono::offset::Utc::now().to_string();
-                                        file.update_state = "Success".to_string();
-                                    }
-
-                                    // store data to local db
-                                    if let Err(err) =
-                                        app_state.db.write().unwrap().put("files", &files)
-                                    {
-                                        println!(
-                                            "Could not write new file version to local DB: {err:?}"
-                                        )
-                                    }
-
+                                    update_file_version(&app_state, msg.clone(), version.clone());
                                     // TODO: send mqtt message
                                 }
                                 Err(err) => {
@@ -82,11 +53,45 @@ pub fn init(app_state: Arc<AppState>) {
                         }
                         _ => {
                             // get current time stamp and file hash - no file version available
-                            println!("Could not read file version due to unknown file type '{extension}'.");
+                            let hash = file_version_reader::get_file_meta_hash(&msg);
+                            match hash {
+                                Ok(hash) => {
+                                    update_file_version(&app_state, msg.clone(), hash.clone());
+                                    // TODO: send mqtt message
+                                }
+                                Err(err) => println!("Could not get file version due to: {err:?}"),
+                            }
                         }
                     }
                 }
             }
         }
     });
+}
+
+fn update_file_version(app_state: &Arc<AppState>, path: String, version: String) {
+    // Update file state with version
+    let mut files = app_state
+        .db
+        .read()
+        .unwrap()
+        .get_unwrap::<Files>("files")
+        .unwrap();
+    // update file version for all files with matching path
+    let files_iterator = &mut files;
+    for (_uuid, file) in files_iterator {
+        // skip changes if path does not match
+        if file.path != path {
+            continue;
+        }
+
+        file.last_version = version.clone();
+        file.last_update_utc = chrono::offset::Utc::now().to_string();
+        file.update_state = "Success".to_string();
+    }
+
+    // store data to local db
+    if let Err(err) = app_state.db.write().unwrap().put("files", &files) {
+        println!("Could not write new file version to local DB: {err:?}")
+    }
 }
