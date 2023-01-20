@@ -68,8 +68,8 @@ fn handle_file_change(path: &String, app_state: &Arc<AppState>) {
                             // TODO: send mqtt message
                         }
                         Err(err) => {
-                            println!("Could not get file version due to: {err:?}")
-                            // TODO: Update file state with error message
+                            println!("Could not get file version due to: {err:?}");
+                            update_file_error(&app_state, path.clone(), err);
                         }
                     }
                 }
@@ -81,7 +81,10 @@ fn handle_file_change(path: &String, app_state: &Arc<AppState>) {
                             update_file_version(&app_state, path.clone(), hash.clone());
                             // TODO: send mqtt message
                         }
-                        Err(err) => println!("Could not get file version due to: {err:?}"),
+                        Err(err) => {
+                            println!("Could not get file version due to: {err:?}");
+                            update_file_error(&app_state, path.clone(), err);
+                        }
                     }
                 }
             }
@@ -89,7 +92,7 @@ fn handle_file_change(path: &String, app_state: &Arc<AppState>) {
     }
 }
 
-/// write the new file version to the local DB
+/// Write the new file version to the local DB
 fn update_file_version(app_state: &Arc<AppState>, path: String, version: String) {
     // Update file state with version
     let mut files = app_state
@@ -109,6 +112,33 @@ fn update_file_version(app_state: &Arc<AppState>, path: String, version: String)
         file.last_version = version.clone();
         file.last_update_utc = chrono::offset::Utc::now().to_string();
         file.update_state = "Success".to_string();
+    }
+
+    // store data to local db
+    if let Err(err) = app_state.db.write().unwrap().put("files", &files) {
+        println!("Could not write new file version to local DB: {err:?}")
+    }
+}
+
+/// Writes a new file error to the local DB
+fn update_file_error(app_state: &Arc<AppState>, path: String, error: String) {
+    // Update file state with version
+    let mut files = app_state
+        .db
+        .read()
+        .unwrap()
+        .get_unwrap::<Files>("files")
+        .unwrap();
+    // update file version for all files with matching path
+    let files_iterator = &mut files;
+    for (_uuid, file) in files_iterator {
+        // skip changes if path does not match
+        if file.path != path {
+            continue;
+        }
+
+        file.last_update_utc = chrono::offset::Utc::now().to_string();
+        file.update_state = error.clone();
     }
 
     // store data to local db

@@ -30,9 +30,9 @@ pub fn get_file_meta_hash(path: &str) -> Result<String, String> {
 
                     Ok(format!("{:x}", hash))
                 }
-                Err(err) => Err(format!("Could not open file for hashing content. {err:?}")),
+                Err(err) => Err(format!("[Get File Version] {}", err.to_string())),
             }
         }
-        Err(err) => Err(format!("Could not open file for hashing content. {err:?}")),
+        Err(err) => Err(format!("[Get File Version] {}", err.to_string())),
     }
 }
