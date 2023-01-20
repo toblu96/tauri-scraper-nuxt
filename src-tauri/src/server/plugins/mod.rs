@@ -1,5 +1,6 @@
 use super::store::AppState;
-use crate::server::router::settings::Broker;
+use crate::server::router::files::Files;
+use chrono;
 use std::{
     path::Path,
     sync::{Arc, RwLock},
@@ -34,19 +35,48 @@ pub fn init(app_state: Arc<AppState>) {
             // handle different file types
             if let Some(os_str) = Path::new(&msg).extension() {
                 if let Some(extension) = os_str.to_str() {
-                    // let Some(extension) = os_str.to_str();
                     match extension {
                         "exe" | "dll" => {
                             // get file version from file properties
-                            println!("exe or dll sent... {msg}");
                             let file_version =
                                 file_version_reader::get_file_version_from_file_properties(&msg);
                             match file_version {
                                 Ok(version) => {
-                                    println!("Got file version {version}")
+                                    // Update file state with version
+                                    let mut files = app_state
+                                        .db
+                                        .read()
+                                        .unwrap()
+                                        .get_unwrap::<Files>("files")
+                                        .unwrap();
+                                    // update file version for all files with matching path
+                                    let files_iterator = &mut files;
+                                    for (_uuid, file) in files_iterator {
+                                        // skip changes if path does not match
+                                        if file.path != msg {
+                                            continue;
+                                        }
+
+                                        file.last_version = version.clone();
+                                        file.last_update_utc =
+                                            chrono::offset::Utc::now().to_string();
+                                        file.update_state = "Success".to_string();
+                                    }
+
+                                    // store data to local db
+                                    if let Err(err) =
+                                        app_state.db.write().unwrap().put("files", &files)
+                                    {
+                                        println!(
+                                            "Could not write new file version to local DB: {err:?}"
+                                        )
+                                    }
+
+                                    // TODO: send mqtt message
                                 }
                                 Err(err) => {
                                     println!("Could not get file version due to: {err:?}")
+                                    // TODO: Update file state with error message
                                 }
                             }
                         }
@@ -57,23 +87,6 @@ pub fn init(app_state: Arc<AppState>) {
                     }
                 }
             }
-
-            // Check broker settings
-            let broker = app_state
-                .db
-                .read()
-                .unwrap()
-                .get_unwrap::<Broker>("broker")
-                .unwrap();
-            println!("Got an event from {msg:?}: {:?}", broker)
         }
     });
-
-    // listen to file changes (get files from db and add event listener) -> this should emit a tx event
-    // includes also a listener to db file change -> if files are changed then reset listeners
-
-    // rx listener {
-    // - read file version
-    // - send mqtt with new version
-    // }
 }
