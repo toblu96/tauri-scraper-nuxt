@@ -16,7 +16,7 @@ static DB_KEY: &str = "broker";
 pub fn routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/settings/broker", get(settings_index))
-        .route("/settings/broker/:id", patch(settings_update))
+        .route("/settings/broker", patch(settings_update))
 }
 
 /// Show application broker settings.
@@ -86,7 +86,7 @@ pub struct BrokerUpdateParams {
 #[utoipa::path(
     patch,
     context_path = "/api",
-    path = "/settings/broker/{id}",
+    path = "/settings/broker",
     tag = "settings",
     request_body = BrokerUpdateParams,
     responses(
