@@ -9,7 +9,7 @@ pub fn get_file_version_from_file_properties(path: &str) -> Result<String, Strin
 
     match version {
         Some((a, b, c, d)) => return Ok(format!("{}.{}.{}.{}", a, b, c, d)),
-        None => return Err("Could not read version.".to_string()),
+        None => return Err("[Get File Version] Could not read version.".to_string()),
     }
 }
 

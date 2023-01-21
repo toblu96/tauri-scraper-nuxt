@@ -63,7 +63,9 @@ fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Resul
     let watcher = RecommendedWatcher::new(
         move |res| {
             futures::executor::block_on(async {
-                tx.send(res).await.unwrap();
+                if let Err(err) = tx.send(res).await {
+                    println!("Could not send value. {err:?}")
+                };
             })
         },
         Config::default(),
@@ -78,20 +80,33 @@ async fn async_watch(
     sender: Arc<RwLock<Sender<String>>>,
 ) -> notify::Result<()> {
     let (mut watcher, mut rx) = async_watcher()?;
+    let mut new_watch_paths: Vec<String> = Vec::new();
+    let mut active_watch_files: Vec<String> = Vec::new();
 
     // get all files from db and loop through it to add the watchers
     let files = store.read().unwrap().get_unwrap::<Files>("files");
     match files {
         Ok(files) => {
-            // if files found, watch them for changes
+            // if files found, watch the parent folders for changes
             for (_uuid, file) in files {
                 // skip disabled file watchers
                 if !&file.enabled {
                     continue;
                 }
-                let path = &file.path;
-                if let Err(err) = watcher.watch(Path::new(path), RecursiveMode::Recursive) {
-                    println!("Could not add file watcher '{path}' due to: {err:?}");
+
+                active_watch_files.push(file.path.clone());
+
+                if let Some(folder_path) = Path::new(&file.path).parent() {
+                    // only add folder watcher if not added yet
+                    if !new_watch_paths.contains(&String::from(folder_path.to_string_lossy())) {
+                        if let Err(err) = watcher.watch(folder_path, RecursiveMode::NonRecursive) {
+                            println!(
+                                "Could not add file watcher '{folder_path:?}' due to: {err:?}"
+                            );
+                            continue;
+                        };
+                        new_watch_paths.push(String::from(folder_path.to_string_lossy()));
+                    }
                 };
             }
         }
@@ -107,6 +122,7 @@ async fn async_watch(
     if let Err(err) = watcher.watch(Path::new(&db_string), RecursiveMode::Recursive) {
         println!("Could not add local db watcher '{db_string}' due to: {err:?}");
     };
+    active_watch_files.push(db_string.clone());
 
     // check for changes on one of the watched paths
     let mut debouncer = debouncer::Bouncer::new(Duration::from_secs(1));
@@ -114,12 +130,16 @@ async fn async_watch(
         match res {
             Ok(event) => {
                 for path in event.paths.iter() {
+                    let path_string = String::from(path.to_string_lossy()).replace("\\", "/");
+
+                    // only pass event for enabled file paths
+                    if !active_watch_files.contains(&path_string) {
+                        continue;
+                    }
                     // debounce change events from listener (separate for each file path)
-                    let path_string = String::from(path.to_string_lossy());
                     if let Some(_) = debouncer.debounce(path_string.clone(), || return true) {
-                        if let Err(err) =
-                            sender.read().unwrap().send(path_string.replace("\\", "/"))
-                        {
+                        // println!("Sent from {path:?}");
+                        if let Err(err) = sender.read().unwrap().send(path_string) {
                             println!("Could not send file change event due to: {err:?}")
                         };
                     }
