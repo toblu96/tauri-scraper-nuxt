@@ -36,9 +36,6 @@ async fn main() {
     // get cli arguments
     let cli = Cli::parse();
 
-    // only for development - do not check in to github!
-    server::start(cli.port).await;
-
     match cli.server {
         true => {
             println!("Starting Http Server..");
