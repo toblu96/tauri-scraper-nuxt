@@ -47,7 +47,7 @@ pub fn init(app_state: Arc<AppState>) {
             let db_name = crate::server::store::FILE_DB_NAME;
             let db_string = format!("{db_path}/{db_name}.kv");
             if path == db_string {
-                // TODO: only refresh watcher if file is new/deleted or path is changed
+                // refresh watcher if file is new/deleted or path is changed
                 file_watcher.refresh();
                 // update mqtt client on settings change (client only)
                 client.refresh();
