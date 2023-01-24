@@ -44,7 +44,7 @@ fn init_file_state_if_necessary(db: &MicroKV) {
 }
 
 fn init_broker_state_if_necessary(db: &MicroKV) {
-    if db.get_unwrap::<Files>(DB_KEY_BROKER).is_err() {
+    if db.get_unwrap::<Broker>(DB_KEY_BROKER).is_err() {
         println!("need to update inital broker state");
         let broker = Broker {
             client_id: "eh-mqtt-client-1".to_string(),
