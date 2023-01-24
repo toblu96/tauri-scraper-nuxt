@@ -167,14 +167,29 @@ async fn settings_update(
 #[derive(Debug, Serialize, Deserialize, ToSchema, Clone, Default)]
 pub struct Broker {
     // id: Uuid,
-    client_id: String,
-    device_group: String,
-    device_id: String,
-    host: String,
-    password: String,
-    port: u16,
-    protocol: String,
-    username: String,
+    pub client_id: String,
+    pub device_group: String,
+    pub device_id: String,
+    pub host: String,
+    pub password: String,
+    pub port: u16,
+    pub protocol: String,
+    pub username: String,
+    pub state: String,
+    pub connected: bool,
+}
+
+impl PartialEq for Broker {
+    fn eq(&self, other: &Self) -> bool {
+        self.client_id == other.client_id
+            && self.device_group == other.device_group
+            && self.device_id == other.device_id
+            && self.host == other.host
+            && self.port == other.port
+            && self.protocol == other.protocol
+            && self.username == other.username
+            && self.password == other.password
+    }
 }
 
 /// File DB operation errors
@@ -200,6 +215,8 @@ fn init_state_if_necessary(state: &Arc<AppState>) {
         let broker = Broker {
             ..Default::default()
         };
-        let _ = state.db.write().unwrap().put(DB_KEY, &broker);
+        if let Err(err) = state.db.write().unwrap().put(DB_KEY, &broker) {
+            println!("Could not initialize broker state: {err:?}")
+        }
     }
 }

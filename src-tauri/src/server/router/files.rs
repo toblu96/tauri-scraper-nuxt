@@ -318,6 +318,8 @@ fn init_state_if_necessary(state: &Arc<AppState>) {
     {
         println!("need to update inital files state");
 
-        let _ = state.db.write().unwrap().put(DB_KEY, &Files::new());
+        if let Err(err) = state.db.write().unwrap().put(DB_KEY, &Files::new()) {
+            println!("Could not initialize file state: {err:?}")
+        }
     }
 }

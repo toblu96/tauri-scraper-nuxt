@@ -32,6 +32,9 @@ futures = "0.3.25"
 microkv = "0.2.9"
 version_info = "0.0.5"
 sha2 = "0.10.6"
+rumqttc = "0.17.0"
+rustls-native-certs = "0.6.2"
+rustls = "0.20.7"
 
 [features]
 # by default Tauri runs in production mode

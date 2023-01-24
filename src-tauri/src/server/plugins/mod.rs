@@ -10,6 +10,7 @@ use tokio::sync::broadcast;
 mod debouncer;
 mod file_version_reader;
 mod file_watcher;
+mod mqtt_client;
 
 pub fn init(app_state: Arc<AppState>) {
     // Instantiate shared channel
@@ -34,6 +35,9 @@ pub fn init(app_state: Arc<AppState>) {
     // init file listener
     let mut file_watcher = file_watcher::FileWatcher::init(tx_file_watcher, &app_state);
 
+    // init mqtt client
+    let mut client = mqtt_client::MqttClient::init(&app_state);
+
     // Create global listener - execute version and mqtt logic here
     tokio::spawn(async move {
         while let Ok(path) = rx.recv().await {
@@ -42,7 +46,10 @@ pub fn init(app_state: Arc<AppState>) {
             let db_name = crate::server::store::FILE_DB_NAME;
             let db_string = format!("{db_path}/{db_name}.kv");
             if path == db_string {
+                // TODO: only refresh watcher if file is new/deleted or path is changed
                 file_watcher.refresh();
+                // TODO: update mqtt client on settings change (client only)
+                client.refresh();
                 continue;
             }
 
