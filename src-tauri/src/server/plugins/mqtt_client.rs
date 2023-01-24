@@ -1,6 +1,6 @@
 use microkv::MicroKV;
 use rumqttc::{
-    AsyncClient, ConnectionError, Event, EventLoop, Incoming, MqttOptions, Outgoing, TlsError,
+    AsyncClient, ConnectionError, Event, EventLoop, Incoming, MqttOptions, Outgoing, QoS, TlsError,
     Transport,
 };
 use rustls::{Certificate, ClientConfig, RootCertStore};
@@ -64,6 +64,25 @@ impl MqttClient {
             *self.current_client_config.write().unwrap() = current_client_config;
         }
     }
+
+    /// Publish new mqtt message
+    pub fn publish(&mut self, topic: &str, payload: serde_json::Value) {
+        let client = self.client.read().unwrap().clone();
+        let topic = topic.to_string();
+
+        tokio::spawn(async move {
+            // let topic = topic.clone();
+            // let payload = payload.clone();
+            if let Err(err) = client
+                .publish(&topic, QoS::AtMostOnce, false, payload.to_string())
+                .await
+            {
+                println!(
+                    "Could not publish mqtt message {payload:?} to topic {topic} due to: {err:?}"
+                )
+            }
+        });
+    }
 }
 
 /// creates a new mqtt client
@@ -104,7 +123,6 @@ fn create_mqtt_client(
 
     // use auth if provided
     if !&username.is_empty() && !&password.is_empty() {
-        println!("use auth");
         mqttoptions.set_credentials(&username, &password);
     }
 

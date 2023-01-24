@@ -1,6 +1,7 @@
 use super::store::AppState;
 use crate::server::router::files::Files;
 use chrono;
+use serde_json::json;
 use std::{
     path::Path,
     sync::{Arc, RwLock},
@@ -48,8 +49,16 @@ pub fn init(app_state: Arc<AppState>) {
             if path == db_string {
                 // TODO: only refresh watcher if file is new/deleted or path is changed
                 file_watcher.refresh();
-                // TODO: update mqtt client on settings change (client only)
+                // update mqtt client on settings change (client only)
                 client.refresh();
+
+                // send test message
+                client.publish(
+                    "test/tbl",
+                    json!({
+                        "hell": "yes"
+                    }),
+                );
                 continue;
             }
 
