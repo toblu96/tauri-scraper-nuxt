@@ -14,10 +14,13 @@ use std::{
 use tokio::sync::broadcast::Sender;
 use tokio::task::JoinHandle;
 
+static DB_KEY: &str = "files";
+
 pub struct FileWatcher {
     sender: Arc<RwLock<Sender<String>>>,
     store: Arc<RwLock<MicroKV>>,
-    watcher_thread: JoinHandle<()>,
+    watcher_thread: Arc<RwLock<JoinHandle<()>>>,
+    current_file_config: Arc<RwLock<Files>>,
 }
 
 impl FileWatcher {
@@ -32,26 +35,48 @@ impl FileWatcher {
             }
         });
 
+        // add current file state
+        let current_file_config = app_state
+            .db
+            .read()
+            .unwrap()
+            .get_unwrap::<Files>(DB_KEY)
+            .unwrap();
+
         FileWatcher {
             sender,
             store: app_state.db.clone(),
-            watcher_thread,
+            watcher_thread: Arc::new(RwLock::new(watcher_thread)),
+            current_file_config: Arc::new(RwLock::new(current_file_config)),
         }
     }
 
     /// Refresh currently watched files
     pub fn refresh(&mut self) {
-        println!("refresh watchers");
-        // first drop all active file watchers and end task
-        self.watcher_thread.abort();
-        // add new file watchers by starting them in new task
-        let watch_store = self.store.clone();
-        let watch_sender = self.sender.clone();
-        self.watcher_thread = tokio::spawn(async move {
-            if let Err(e) = async_watch(watch_store, watch_sender).await {
-                println!("error: {:?}", e)
-            }
-        });
+        let current = self.current_file_config.read().unwrap().clone();
+        let new = self
+            .store
+            .read()
+            .unwrap()
+            .get_unwrap::<Files>(DB_KEY)
+            .unwrap();
+        if current != new {
+            println!("refresh watchers");
+            // first drop all active file watchers and end task
+            self.watcher_thread.write().unwrap().abort();
+            // add new file watchers by starting them in new task
+            let watch_store = self.store.clone();
+            let watch_sender = self.sender.clone();
+            let thread = tokio::spawn(async move {
+                if let Err(e) = async_watch(watch_store, watch_sender).await {
+                    println!("error: {:?}", e)
+                }
+            });
+
+            // store updated data to local state
+            *self.watcher_thread.write().unwrap() = thread;
+            *self.current_file_config.write().unwrap() = new;
+        }
     }
 }
 

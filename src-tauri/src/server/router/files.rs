@@ -295,6 +295,16 @@ pub struct File {
     pub path: String,
     pub mqtt_topic: String,
 }
+
+impl PartialEq for File {
+    fn eq(&self, other: &Self) -> bool {
+        self.enabled == other.enabled
+            && self.mqtt_topic == other.mqtt_topic
+            && self.name == other.name
+            && self.path == other.path
+    }
+}
+
 pub type Files = HashMap<Uuid, File>;
 
 /// File DB operation errors
