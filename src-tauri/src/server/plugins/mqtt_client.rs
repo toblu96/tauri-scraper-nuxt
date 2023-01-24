@@ -19,7 +19,7 @@ pub struct MqttClient {
     pub client: Arc<RwLock<AsyncClient>>,
     store: Arc<RwLock<MicroKV>>,
     event_loop_task: Arc<RwLock<JoinHandle<()>>>,
-    current_client_config: Arc<RwLock<Broker>>,
+    pub current_client_config: Arc<RwLock<Broker>>,
 }
 
 impl MqttClient {

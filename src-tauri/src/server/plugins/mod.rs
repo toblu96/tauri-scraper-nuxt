@@ -18,6 +18,12 @@ pub fn init(app_state: Arc<AppState>) {
     let (tx, mut rx) = broadcast::channel::<String>(40);
     let tx_file_watcher = Arc::new(RwLock::new(tx.clone()));
 
+    // init file listener
+    let mut file_watcher = file_watcher::FileWatcher::init(tx_file_watcher, &app_state);
+
+    // init mqtt client
+    let mut client = mqtt_client::MqttClient::init(&app_state);
+
     // check all enabled file versions on application start
     let files = app_state
         .db
@@ -30,14 +36,8 @@ pub fn init(app_state: Arc<AppState>) {
         if !&file.enabled {
             continue;
         }
-        handle_file_change(&file.path, &app_state);
+        handle_file_change(&file.path, &app_state, &mut client);
     }
-
-    // init file listener
-    let mut file_watcher = file_watcher::FileWatcher::init(tx_file_watcher, &app_state);
-
-    // init mqtt client
-    let mut client = mqtt_client::MqttClient::init(&app_state);
 
     // Create global listener - execute version and mqtt logic here
     tokio::spawn(async move {
@@ -52,24 +52,21 @@ pub fn init(app_state: Arc<AppState>) {
                 // update mqtt client on settings change (client only)
                 client.refresh();
 
-                // send test message
-                client.publish(
-                    "test/tbl",
-                    json!({
-                        "hell": "yes"
-                    }),
-                );
                 continue;
             }
 
             // TODO: handle other file changes
-            handle_file_change(&path, &app_state);
+            handle_file_change(&path, &app_state, &mut client);
         }
     });
 }
 
 /// Gets the new file version on file change and stores it to the local DB
-fn handle_file_change(path: &String, app_state: &Arc<AppState>) {
+fn handle_file_change(
+    path: &String,
+    app_state: &Arc<AppState>,
+    mqtt_client: &mut mqtt_client::MqttClient,
+) {
     if let Some(os_str) = Path::new(&path).extension() {
         if let Some(extension) = os_str.to_str() {
             // handle different file types
@@ -80,8 +77,12 @@ fn handle_file_change(path: &String, app_state: &Arc<AppState>) {
                         file_version_reader::get_file_version_from_file_properties(&path);
                     match file_version {
                         Ok(version) => {
-                            update_file_version(&app_state, path.clone(), version.clone());
-                            // TODO: send mqtt message
+                            update_file_version(
+                                &app_state,
+                                mqtt_client,
+                                path.clone(),
+                                version.clone(),
+                            );
                         }
                         Err(err) => {
                             println!("Could not get file version due to: {err:?}");
@@ -94,8 +95,12 @@ fn handle_file_change(path: &String, app_state: &Arc<AppState>) {
                     let hash = file_version_reader::get_file_meta_hash(&path);
                     match hash {
                         Ok(hash) => {
-                            update_file_version(&app_state, path.clone(), hash.clone());
-                            // TODO: send mqtt message
+                            update_file_version(
+                                &app_state,
+                                mqtt_client,
+                                path.clone(),
+                                hash.clone(),
+                            );
                         }
                         Err(err) => {
                             println!("Could not get file version due to: {err:?}");
@@ -109,7 +114,12 @@ fn handle_file_change(path: &String, app_state: &Arc<AppState>) {
 }
 
 /// Write the new file version to the local DB
-fn update_file_version(app_state: &Arc<AppState>, path: String, version: String) {
+fn update_file_version(
+    app_state: &Arc<AppState>,
+    mqtt_client: &mut mqtt_client::MqttClient,
+    path: String,
+    version: String,
+) {
     // Update file state with version
     let mut files = app_state
         .db
@@ -128,6 +138,33 @@ fn update_file_version(app_state: &Arc<AppState>, path: String, version: String)
         file.last_version = version.clone();
         file.last_update_utc = chrono::offset::Utc::now().to_string();
         file.update_state = "Success".to_string();
+
+        // send mqtt message
+        let device_id = mqtt_client
+            .current_client_config
+            .read()
+            .unwrap()
+            .device_id
+            .clone();
+        let device_group = mqtt_client
+            .current_client_config
+            .read()
+            .unwrap()
+            .device_group
+            .clone();
+
+        mqtt_client.publish(
+            &file.mqtt_topic,
+            json!({
+              "deviceId": device_id,
+              "timestamp": chrono::offset::Utc::now().to_string(),
+              "group": device_group,
+              "measures": {
+                format!("{}", &file.name): &file.last_version,
+                format!("{}DataType", &file.name): "String",
+              },
+            }),
+        );
     }
 
     // store data to local db

@@ -63,7 +63,7 @@ pub struct FileCreateParams {
     #[schema(example = "C:\\win\\doof")]
     path: String,
     /// Mqtt topic on which the current file version gets sent
-    #[schema(example = "/eh/test/topic")]
+    #[schema(example = "eh/test/topic")]
     mqtt_topic: String,
 }
 /// Add a new file.
@@ -137,7 +137,7 @@ pub struct FileUpdateParams {
     #[schema(example = "C:\\win\\doof")]
     path: Option<String>,
     /// Mqtt topic on which the current file version gets sent
-    #[schema(example = "/eh/test/topic")]
+    #[schema(example = "eh/test/topic")]
     mqtt_topic: Option<String>,
     /// Timestamp when the fileversion was last read
     #[schema(example = "2022-12-21 13:38:22.948780400 UTC")]
