@@ -1,13 +1,21 @@
 use crate::server::store::AppState;
 use axum::{
-    extract::State,
+    extract::{State, TypedHeader},
+    headers,
     http::StatusCode,
-    response::IntoResponse,
+    response::{
+        sse::{Event, Sse},
+        IntoResponse,
+    },
     routing::{get, patch},
     Json, Router,
 };
+use futures::stream::{self, Stream};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::sync::Arc;
+use std::{convert::Infallible, time::Duration};
+use tokio_stream::StreamExt as _;
 use utoipa::{IntoParams, ToSchema};
 
 static DB_KEY: &str = "broker";
@@ -17,6 +25,7 @@ pub fn routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/settings/broker", get(settings_index))
         .route("/settings/broker", patch(settings_update))
+        .route("/settings/sse", get(settings_index_sse))
 }
 
 /// Show application broker settings.
@@ -161,6 +170,36 @@ async fn settings_update(
                 .into_response()
         }
     }
+}
+
+/// Get "realtime" changes for all configuration settings.
+///
+/// Returns configuration for this application. Updates automatically using SSE.
+async fn settings_index_sse(
+    State(state): State<Arc<AppState>>,
+    TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    println!("`{}` connected", user_agent.as_str());
+
+    // A `Stream` that repeats an event every second
+    let stream = stream::repeat_with(move || {
+        let broker = state.db.read().unwrap().get_unwrap::<Broker>(DB_KEY);
+        match broker {
+            Ok(broker) => Event::default().data(json!(broker).to_string()),
+            Err(err) => {
+                println!("Could not read realtime broker data.");
+                Event::default().data(json!({ "error": err.to_string() }).to_string())
+            }
+        }
+    })
+    .map(Ok)
+    .throttle(Duration::from_secs(1));
+
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(Duration::from_secs(1))
+            .text("keep-alive-text"),
+    )
 }
 
 /// Broker schema.

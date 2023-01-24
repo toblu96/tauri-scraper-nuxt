@@ -1,13 +1,21 @@
 use crate::server::store::AppState;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, TypedHeader},
+    headers,
     http::StatusCode,
-    response::IntoResponse,
+    response::{
+        sse::{Event, Sse},
+        IntoResponse,
+    },
     routing::{get, patch},
     Json, Router,
 };
+use futures::stream::{self, Stream};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
+use std::{convert::Infallible, time::Duration};
+use tokio_stream::StreamExt as _;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
@@ -18,6 +26,7 @@ pub fn routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/files", get(files_index).post(files_create))
         .route("/files/:id", patch(files_update).delete(files_delete))
+        .route("/files/sse", get(files_index_sse))
 }
 
 /// List all configured files.
@@ -281,6 +290,39 @@ async fn files_delete(
     } else {
         (StatusCode::NO_CONTENT, Json({})).into_response()
     }
+}
+
+/// Get "realtime" changes for all configured files.
+///
+/// Returns all configured files for this application. Updates automatically using SSE.
+async fn files_index_sse(
+    State(state): State<Arc<AppState>>,
+    TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    println!("`{}` connected", user_agent.as_str());
+
+    // A `Stream` that repeats an event every second
+    let stream = stream::repeat_with(move || {
+        let files = state
+            .db
+            .read()
+            .unwrap()
+            .get_unwrap::<Files>(DB_KEY)
+            .unwrap()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+
+        Event::default().data(json!(files).to_string())
+    })
+    .map(Ok)
+    .throttle(Duration::from_secs(1));
+
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(Duration::from_secs(1))
+            .text("keep-alive-text"),
+    )
 }
 
 /// Files schema.
