@@ -42,9 +42,6 @@ pub fn routes() -> Router<Arc<AppState>> {
         )
     )]
 pub async fn settings_index(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    // init data if store empty
-    init_state_if_necessary(&state);
-
     match state.db.read().unwrap().get_unwrap::<Broker>(DB_KEY) {
         Ok(broker) => (StatusCode::OK, Json(broker)).into_response(),
         Err(err) => {
@@ -240,22 +237,4 @@ pub enum DBError {
     /// DB file not writeable.
     #[schema(example = "Could not write data to file")]
     WriteError(String),
-}
-
-fn init_state_if_necessary(state: &Arc<AppState>) {
-    if state
-        .db
-        .read()
-        .unwrap()
-        .get_unwrap::<Broker>(DB_KEY)
-        .is_err()
-    {
-        println!("need to update inital broker state");
-        let broker = Broker {
-            ..Default::default()
-        };
-        if let Err(err) = state.db.write().unwrap().put(DB_KEY, &broker) {
-            println!("Could not initialize broker state: {err:?}")
-        }
-    }
 }

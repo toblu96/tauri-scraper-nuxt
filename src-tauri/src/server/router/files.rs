@@ -42,9 +42,6 @@ pub fn routes() -> Router<Arc<AppState>> {
         )
     )]
 pub async fn files_index(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    // init data if store empty
-    init_state_if_necessary(&state);
-
     let files = state
         .db
         .read()
@@ -94,9 +91,6 @@ pub async fn files_create(
     State(state): State<Arc<AppState>>,
     Json(input): Json<FileCreateParams>,
 ) -> impl IntoResponse {
-    // init data if store empty
-    init_state_if_necessary(&state);
-
     let file = File {
         id: Uuid::new_v4(),
         name: input.name,
@@ -358,20 +352,4 @@ pub enum DBError {
     /// DB file not writeable.
     #[schema(example = "Could not write data to file")]
     WriteError(String),
-}
-
-fn init_state_if_necessary(state: &Arc<AppState>) {
-    if state
-        .db
-        .read()
-        .unwrap()
-        .get_unwrap::<Files>(DB_KEY)
-        .is_err()
-    {
-        println!("need to update inital files state");
-
-        if let Err(err) = state.db.write().unwrap().put(DB_KEY, &Files::new()) {
-            println!("Could not initialize file state: {err:?}")
-        }
-    }
 }
