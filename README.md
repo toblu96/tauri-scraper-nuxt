@@ -70,10 +70,22 @@ npm install
 
 ## Development Application
 
+### Windows application
 Start the application on your local machine with HMR feature enabled for frontend and backend.
 
 ```bash
 npm run tauri dev
+```
+
+### Backend web server
+
+Cargo:
+```bash
+cargo tauri dev -- -- -s
+```
+npm:
+```bash
+npm run tauri dev -- -- -- -s
 ```
 
 ## Production
