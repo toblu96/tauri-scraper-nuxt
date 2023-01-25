@@ -1,5 +1,6 @@
-use axum::{response::Redirect, routing::get, Router};
+use axum::{http::HeaderValue, response::Redirect, routing::get, Router};
 use std::net::SocketAddr;
+use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -43,7 +44,10 @@ pub async fn start(port: u16) {
             get(|| async { Redirect::permanent(&"/swagger-ui".to_string()) }),
         )
         .nest("/api", router::routes())
-        .with_state(app_state.clone());
+        .with_state(app_state.clone())
+        .layer(
+            CorsLayer::new().allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap()),
+        );
 
     // init plugins
     plugins::init(app_state);
