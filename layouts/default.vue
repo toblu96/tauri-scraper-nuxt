@@ -107,7 +107,10 @@ import {
 const fetch = useTauriFetch();
 let { data: info } = await fetch("/info");
 // @ts-ignore
-const [mainVersion, devVersion] = info.version.split("-");
+const [mainVersion, devVersion] = info.version?.split("-") || [
+  "0.0.0",
+  undefined,
+];
 
 const sidebarNavigation = ref([
   { name: "Dashboard", href: "/", icon: RectangleGroupIcon, current: true },

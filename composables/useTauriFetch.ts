@@ -1,11 +1,21 @@
 import { fetch as tauriFetch, FetchOptions } from "@tauri-apps/api/http";
-// console.log((await tauriFetch("http://localhost:8000/api/info")).data);
 
+// CORS workaround because nuxt serves as SPA here
 export const useTauriFetch = () => {
   const fetch = async (path: string, options?: FetchOptions) => {
-    let resp = await tauriFetch(`http://localhost:8000/api${path}`, options);
+    try {
+      let resp = await tauriFetch(`http://localhost:8000/api${path}`, options);
 
-    return { ...resp };
+      return { ...resp };
+    } catch (error) {
+      console.error(`Could not reach api: ${error}`);
+
+      return {
+        data: "",
+        ok: false,
+        status: error,
+      };
+    }
   };
   return fetch;
 };
