@@ -3,7 +3,7 @@
     <ul role="list" class="divide-y divide-gray-200">
       <div class="px-4 py-4 sm:px-6">
         <h2 class="text-lg font-medium leading-6 text-gray-900">
-          Version Scrapers
+          Monitored Files
         </h2>
       </div>
       <!-- empty state -->
@@ -14,7 +14,7 @@
             aria-hidden="true"
           />
           <h3 class="mt-2 text-sm font-medium text-gray-900">
-            No files activated
+            No files monitored
           </h3>
           <p class="mt-1 text-sm text-gray-500">
             Configure and activate at least one file to get some version changes
