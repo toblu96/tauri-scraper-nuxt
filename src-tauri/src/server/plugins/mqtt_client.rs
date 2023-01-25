@@ -210,14 +210,11 @@ pub fn spawn_eventloop_task(
                 Ok(Event::Outgoing(o)) => println!("Outgoing = {:?}", o),
                 Err(e) => {
                     println!("Error = {:?}", e);
-                    // _app.emit_all("plugin:mqtt//connected", false).unwrap();
 
                     match e {
                         ConnectionError::MqttState(e) => {
                             println!("Pause eventloop task due to: {}", e);
                             update_broker_state(&store, false, &e.to_string());
-                            // _app.emit_all("plugin:mqtt//connection-status", format!("{:?}", e))
-                            //     .unwrap();
                             std::thread::sleep(std::time::Duration::from_secs(1))
                         }
                         ConnectionError::Tls(TlsError::Io(e)) => {
@@ -226,24 +223,18 @@ pub fn spawn_eventloop_task(
                             let error: std::io::Error = e;
                             println!("End eventloop task due to: {}", error);
                             update_broker_state(&store, false, &error.to_string());
-                            // _app.emit_all("plugin:mqtt//connection-status", error.to_string())
-                            //     .unwrap();
                             break;
                         }
                         ConnectionError::Tls(TlsError::DNSName(e)) => {
                             // Tls(DNSName(InvalidDnsNameError))
                             println!("End eventloop task due to: {}", e);
                             update_broker_state(&store, false, &e.to_string());
-                            // _app.emit_all("plugin:mqtt//connection-status", format!("{:?}", e))
-                            //     .unwrap();
                             break;
                         }
                         ConnectionError::Tls(e) => {
                             // catch other Tls errors
                             println!("End eventloop task due to: {}", e);
                             update_broker_state(&store, false, &e.to_string());
-                            // _app.emit_all("plugin:mqtt//connection-status", format!("{:?}", e))
-                            //     .unwrap();
                             break;
                         }
                         ConnectionError::Io(e) => {
@@ -256,17 +247,10 @@ pub fn spawn_eventloop_task(
                             {
                                 println!("End eventloop task due to: {}", error);
                                 update_broker_state(&store, false, "Needs SSL/TLS enabled");
-                                // _app.emit_all(
-                                //     "plugin:mqtt//connection-status",
-                                //     "Needs SSL/TLS enabled",
-                                // )
-                                // .unwrap();
                                 break;
                             } else {
                                 println!("Pause eventloop task due to: {}", error);
                                 update_broker_state(&store, false, &error.to_string());
-                                // _app.emit_all("plugin:mqtt//connection-status", error.to_string())
-                                //     .unwrap();
                                 std::thread::sleep(std::time::Duration::from_secs(10))
                             }
                         }
@@ -274,20 +258,14 @@ pub fn spawn_eventloop_task(
                             // prevent filling log with unnecessary auth errors, e.g.:
                             // ConnectionRefused(NotAuthorized)
                             println!("End eventloop task due to: {:?}", e);
-                            // update_broker_state(&store, false, &format!("{:?}", e));
-                            // _app.emit_all("plugin:mqtt//connection-status", format!("{:?}", e))
-                            //     .unwrap();
+                            update_broker_state(&store, false, &format!("{:?}", e));
                             break;
                         }
                         ConnectionError::Timeout(_e) => {
                             update_broker_state(&store, false, "Timeout");
-                            // _app.emit_all("plugin:mqtt//connection-status", "Timeout")
-                            //     .unwrap();
                         }
                         _ => {
                             update_broker_state(&store, false, "Connection Error");
-                            // _app.emit_all("plugin:mqtt//connection-status", "Connection Error")
-                            //     .unwrap();
                             break;
                         }
                     }
