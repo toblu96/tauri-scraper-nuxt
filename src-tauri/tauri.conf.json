@@ -18,6 +18,13 @@
         "scope": [
           "**"
         ]
+      },
+      "http": {
+        "all": true,
+        "request": true,
+        "scope": [
+          "http://**"
+        ]
       }
     },
     "bundle": {
