@@ -10,15 +10,40 @@ const emit = defineEmits<{
   (e: "toggleEnableState", id: string, state: boolean): void;
 }>();
 
-const scraperStore = useScraperStore();
-
-type ScraperProps = {
+interface IFile {
   id: string;
   name: string;
   enabled: boolean;
-  lastUpdate?: string;
+  last_update_utc?: string; // timestamp UTC
+  update_state?: string; // status of update - e.g. could not read | successful
+  last_version?: string; // latest file version
   path: string;
+  mqtt_topic: string;
+}
+// subscribe to active files from sse backend
+const files = ref<IFile[]>([]);
+let eventSource = new EventSource("http://localhost:8000/api/files/sse");
+eventSource.onmessage = function (event) {
+  try {
+    let unsortedFiles: IFile[] = JSON.parse(event.data);
+    // sort by path and id
+    files.value = unsortedFiles.sort((a, b) => {
+      if (a.path == b.path) return a.id.localeCompare(b.id);
+      return a.path.localeCompare(b.path);
+    });
+  } catch (error) {
+    console.error(`Could not update files: ${error}`);
+  }
+
+  // release locks
+  isAddFileLocked.value = false;
 };
+// close eventsource on page leave
+onUnmounted(() => {
+  eventSource.close();
+});
+
+const scraperStore = useScraperStore();
 
 type ImportedScraperProps = {
   name: string;
@@ -26,29 +51,43 @@ type ImportedScraperProps = {
   mqttTopic: string;
 };
 
-const props = defineProps<{
-  scrapers: ScraperProps[];
-}>();
+const isAddFileLocked = ref(false);
+const changedFilesPending = ref<string[]>([]);
 
 const selectedScrapers: Ref<string[]> = ref([]);
 const checked = ref(false);
 const indeterminate = computed(
   () =>
     selectedScrapers.value.length > 0 &&
-    selectedScrapers.value.length < props.scrapers.length
+    selectedScrapers.value.length < files.value.length
 );
 
-const addScraper = () => {
-  scraperStore.addFileScraper({
-    enabled: false,
-    name: "quick scraper",
-    path: "none",
-    mqttTopic: "eh/test/1234",
+const addScraper = async () => {
+  isAddFileLocked.value = true;
+
+  let res = await useFetch(`http://localhost:8000/api/files`, {
+    method: "POST",
+    body: {
+      enabled: false,
+      mqtt_topic: "eh/test/topic",
+      name: "ExampleFile.dll",
+      path: "C:/win/doof",
+    },
   });
+  if (res.error.value) {
+    console.error(res.error.value);
+  }
 };
-const deleteScrapers = () => {
-  for (const scraperIdx of selectedScrapers.value) {
-    scraperStore.removeFileScraper(scraperIdx);
+const deleteScrapers = async () => {
+  for (const fileId of selectedScrapers.value) {
+    changedFilesPending.value.push(fileId);
+
+    let res = await useFetch(`http://localhost:8000/api/files/${fileId}`, {
+      method: "DELETE",
+    });
+    if (res.error.value) {
+      console.error(res.error.value);
+    }
   }
   selectedScrapers.value = [];
 };
@@ -165,8 +204,9 @@ const importScrapers = async () => {
       </button>
       <button
         @click="addScraper()"
+        :disabled="isAddFileLocked"
         type="button"
-        class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
+        class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:animate-pulse disabled:cursor-not-allowed disabled:opacity-30 sm:w-auto"
       >
         Add scraper
       </button>
@@ -206,14 +246,14 @@ const importScrapers = async () => {
                     class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"
                     :checked="
                       (indeterminate ||
-                        selectedScrapers.length === scrapers.length) &&
+                        selectedScrapers.length === files?.length) &&
                       selectedScrapers.length > 0
                     "
                     :indeterminate="indeterminate"
                     @change="
                       //@ts-ignore
                       selectedScrapers = $event.target?.checked
-                        ? scrapers.map((p) => p.id)
+                        ? files.map((p) => p.id)
                         : []
                     "
                   />
@@ -246,9 +286,13 @@ const importScrapers = async () => {
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
               <tr
-                v-for="scraper in scrapers"
+                v-for="scraper in files"
                 :key="scraper.id"
-                :class="[selectedScrapers.includes(scraper.id) && 'bg-gray-50']"
+                :class="[
+                  selectedScrapers.includes(scraper.id) && 'bg-gray-50 ',
+                  changedFilesPending.includes(scraper.id) &&
+                    'bg-red-100 opacity-30',
+                ]"
               >
                 <td class="relative w-12 px-6 sm:w-16 sm:px-8">
                   <div
@@ -309,7 +353,7 @@ const importScrapers = async () => {
               </tr>
             </tbody>
           </table>
-          <div class="bg-white px-4 py-12" v-if="scrapers.length <= 0">
+          <div class="bg-white px-4 py-12" v-if="files.length <= 0">
             <div class="mx-auto max-w-lg">
               <button
                 @click="addScraper()"
