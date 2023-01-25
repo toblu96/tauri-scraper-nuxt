@@ -115,7 +115,7 @@ const [mainVersion, devVersion] = info.version?.split("-") || [
 const sidebarNavigation = ref([
   { name: "Dashboard", href: "/", icon: RectangleGroupIcon, current: true },
   {
-    name: "Scrapers",
+    name: "Files",
     href: "/scrapers",
     icon: DocumentTextIcon,
     current: false,

@@ -109,11 +109,12 @@ async fn async_watch(
     let mut active_watch_files: Vec<String> = Vec::new();
 
     // get all files from db and loop through it to add the watchers
-    let files = store.read().unwrap().get_unwrap::<Files>("files");
+    let mut files = store.read().unwrap().get_unwrap::<Files>("files");
     match files {
-        Ok(files) => {
+        Ok(mut files) => {
             // if files found, watch the parent folders for changes
-            for (_uuid, file) in files {
+            let files_iterator = &mut files;
+            for (_uuid, file) in files_iterator {
                 // skip disabled file watchers
                 if !&file.enabled {
                     continue;
@@ -128,11 +129,17 @@ async fn async_watch(
                             println!(
                                 "Could not add file watcher '{folder_path:?}' due to: {err:?}"
                             );
+                            // update file state in case of error and disable watcher
+                            file.update_state = err.to_string();
+                            file.enabled = false;
                             continue;
                         };
                         new_watch_paths.push(String::from(folder_path.to_string_lossy()));
                     }
                 };
+            }
+            if let Err(err) = store.write().unwrap().put("files", &files) {
+                println!("Could not update file state on local file db: {err:?}")
             }
         }
         Err(err) => {

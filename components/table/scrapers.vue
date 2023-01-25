@@ -6,6 +6,10 @@ import { DocumentPlusIcon } from "@heroicons/vue/24/outline";
 import { save, message, open } from "@tauri-apps/api/dialog";
 import { writeTextFile, readTextFile } from "@tauri-apps/api/fs";
 
+const emit = defineEmits<{
+  (e: "toggleEnableState", id: string, state: boolean): void;
+}>();
+
 const scraperStore = useScraperStore();
 
 type ScraperProps = {
@@ -207,7 +211,8 @@ const importScrapers = async () => {
                     "
                     :indeterminate="indeterminate"
                     @change="
-                      selectedScrapers = $event.target.checked
+                      //@ts-ignore
+                      selectedScrapers = $event.target?.checked
                         ? scrapers.map((p) => p.id)
                         : []
                     "
@@ -273,7 +278,9 @@ const importScrapers = async () => {
                 <td class="whitespace-nowrap py-4 text-sm text-gray-500">
                   <Switch
                     v-model="scraper.enabled"
-                    @click="scraperStore.toggleEnableState(scraper.id)"
+                    @click="
+                      $emit('toggleEnableState', scraper.id, !scraper.enabled)
+                    "
                     :class="[
                       scraper.enabled ? 'bg-indigo-500' : 'bg-gray-200',
                       'relative ml-4 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
