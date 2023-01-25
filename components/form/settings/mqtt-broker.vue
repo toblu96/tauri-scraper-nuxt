@@ -1,29 +1,116 @@
-<script setup>
-import { useScraperStore } from "~~/stores/scrapers";
+<script setup lang="ts">
 import { Switch } from "@headlessui/vue";
 import { QuestionMarkCircleIcon } from "@heroicons/vue/20/solid";
+import { debounce } from "ts-debounce";
 
-const store = useScraperStore();
-const broker = store.mqttBroker;
+enum MqttProtocol {
+  mqtt = "mqtt://",
+  mqtts = "mqtts://",
+}
 
-const secureBroker = ref(false);
-secureBroker.value = broker.protocol === "mqtts://" ? true : false;
+interface IMqttBrokerSettings {
+  client_id: string;
+  host: string;
+  port: number;
+  protocol: MqttProtocol;
+  username: string;
+  password: string;
+  device_id: string;
+  device_group: string;
+  state: string;
+  connected: boolean;
+}
 
-// trigger broker reconnection on settings changed
+const blockEventSourceUpdates = ref(false);
+const isBrokerReconnecting = ref(false);
+
+// init broker settings with live values - prevents watcher to send update to server on init
+const brokerInitData = await useFetch(
+  "http://localhost:8000/api/settings/broker"
+);
+const brokerSettings = ref<IMqttBrokerSettings>(
+  brokerInitData.data.value as IMqttBrokerSettings
+);
+const isTLSActive = ref(brokerSettings.value.protocol === "mqtts://");
+
+// subscribe to active files from sse backend
+let eventSource = new EventSource("http://localhost:8000/api/settings/sse");
+eventSource.onmessage = function (event) {
+  // do not overrride pending changes
+  if (blockEventSourceUpdates.value) return;
+
+  try {
+    let brokerData: IMqttBrokerSettings = JSON.parse(event.data);
+
+    // only update reactive values on change, otherwise watcher will create an infinite loop
+    if (brokerSettings.value.client_id != brokerData.client_id)
+      brokerSettings.value.client_id = brokerData.client_id;
+    if (brokerSettings.value.device_group != brokerData.device_group)
+      brokerSettings.value.device_group = brokerData.device_group;
+    if (brokerSettings.value.device_id != brokerData.device_id)
+      brokerSettings.value.device_id = brokerData.device_id;
+    if (brokerSettings.value.host != brokerData.host)
+      brokerSettings.value.host = brokerData.host;
+    if (brokerSettings.value.port != brokerData.port)
+      brokerSettings.value.port = brokerData.port;
+    if (brokerSettings.value.password != brokerData.password)
+      brokerSettings.value.password = brokerData.password;
+    if (brokerSettings.value.protocol != brokerData.protocol)
+      brokerSettings.value.protocol = brokerData.protocol;
+    if (brokerSettings.value.username != brokerData.username)
+      brokerSettings.value.username = brokerData.username;
+    if (brokerSettings.value.connected != brokerData.connected)
+      brokerSettings.value.connected = brokerData.connected;
+    if (brokerSettings.value.state != brokerData.state)
+      brokerSettings.value.state = brokerData.state;
+
+    if (isTLSActive.value != (brokerSettings.value.protocol === "mqtts://"))
+      isTLSActive.value = brokerSettings.value.protocol === "mqtts://";
+  } catch (error) {
+    console.error(`Could not update broker settings: ${error}`);
+  }
+  isBrokerReconnecting.value = false;
+};
+// close eventsource on page leave
+onUnmounted(() => {
+  eventSource.close();
+});
+
+// trigger broker settings change
+const updateBrokerSettings = debounce(async () => {
+  let res = await useFetch("http://localhost:8000/api/settings/broker", {
+    method: "PATCH",
+    body: {
+      client_id: brokerSettings.value.client_id,
+      device_group: brokerSettings.value.device_group,
+      device_id: brokerSettings.value.device_id,
+      host: brokerSettings.value.host,
+      password: brokerSettings.value.password,
+      port: brokerSettings.value.port,
+      username: brokerSettings.value.username,
+      protocol: isTLSActive.value ? "mqtts://" : "mqtt://",
+    },
+  });
+  if (res.error.value) {
+    console.error(res.error.value);
+  }
+  blockEventSourceUpdates.value = false;
+}, 1000);
 watch(
   () => [
-    broker.clientId,
-    broker.host,
-    broker.port,
-    broker.protocol,
-    broker.username,
-    broker.password,
+    isTLSActive.value,
+    brokerSettings.value.client_id,
+    brokerSettings.value.device_group,
+    brokerSettings.value.device_id,
+    brokerSettings.value.host,
+    brokerSettings.value.password,
+    brokerSettings.value.port,
+    brokerSettings.value.username,
   ],
   () => {
-    store.reconnectMQTTBroker();
-  },
-  {
-    deep: true,
+    blockEventSourceUpdates.value = true;
+    isBrokerReconnecting.value = true;
+    updateBrokerSettings();
   }
 );
 </script>
@@ -44,7 +131,20 @@ watch(
             </p>
           </div>
           <span
-            v-if="store.mqttBrokerState.connected"
+            v-if="isBrokerReconnecting"
+            class="absolute bottom-0 inline-flex items-center rounded-md bg-yellow-100 px-2.5 py-0.5 text-sm font-medium text-yellow-800"
+          >
+            <svg
+              class="-ml-0.5 mr-1.5 h-2 w-2 animate-pulse text-yellow-400"
+              fill="currentColor"
+              viewBox="0 0 8 8"
+            >
+              <circle cx="4" cy="4" r="3" />
+            </svg>
+            Reconnecting..
+          </span>
+          <span
+            v-else-if="brokerSettings.connected"
             class="absolute bottom-0 inline-flex items-center rounded-md bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800"
           >
             <svg
@@ -60,7 +160,7 @@ watch(
             v-else
             class="absolute bottom-0 inline-flex items-center rounded-md bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-800"
           >
-            {{ store.mqttBrokerState.description || "Connection Error" }}
+            {{ brokerSettings.state || "Connection Error" }}
           </span>
         </div>
         <div class="mt-5 md:col-span-2 md:mt-0">
@@ -73,7 +173,7 @@ watch(
               >
               <input
                 type="text"
-                v-model="broker.clientId"
+                v-model="brokerSettings.client_id"
                 name="broker-client-id"
                 id="broker-client-id"
                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
@@ -99,17 +199,16 @@ watch(
               <div class="place-self-stretch">
                 <Switch
                   id="broker-secure"
-                  v-model="secureBroker"
-                  @click="store.toggleBrokerSecurity()"
+                  v-model="isTLSActive"
                   :class="[
-                    secureBroker ? 'bg-indigo-500' : 'bg-gray-200',
+                    isTLSActive ? 'bg-indigo-500' : 'bg-gray-200',
                     'relative  inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
                   ]"
                 >
                   <span
                     aria-hidden="true"
                     :class="[
-                      secureBroker ? 'translate-x-5' : 'translate-x-0',
+                      isTLSActive ? 'translate-x-5' : 'translate-x-0',
                       'inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
                     ]"
                   />
@@ -127,7 +226,7 @@ watch(
                 <div class="mt-1 flex rounded-md shadow-sm">
                   <span
                     class="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm"
-                    >{{ broker.protocol }}</span
+                    >{{ brokerSettings.protocol }}</span
                   >
                   <input
                     type="text"
@@ -135,7 +234,7 @@ watch(
                     id="broker-host"
                     class="block w-full min-w-0 flex-1 rounded-none rounded-r-md border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     placeholder="localhost"
-                    v-model="broker.host"
+                    v-model="brokerSettings.host"
                   />
                 </div>
               </div>
@@ -154,7 +253,7 @@ watch(
                     id="broker-port"
                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     placeholder="1883"
-                    v-model="broker.port"
+                    v-model="brokerSettings.port"
                   />
                 </div>
               </div>
@@ -173,7 +272,7 @@ watch(
                     id="broker-username"
                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     placeholder="admin"
-                    v-model="broker.username"
+                    v-model="brokerSettings.username"
                   />
                 </div>
               </div>
@@ -192,7 +291,7 @@ watch(
                     id="broker-password"
                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     placeholder="1234"
-                    v-model="broker.password"
+                    v-model="brokerSettings.password"
                   />
                 </div>
               </div>
@@ -231,7 +330,7 @@ watch(
                     id="solman-device-id"
                     class="block w-full rounded-md border-gray-300 pr-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     placeholder="FC_0103"
-                    v-model="broker.deviceId"
+                    v-model="brokerSettings.device_id"
                   />
                   <div
                     class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"
@@ -261,7 +360,7 @@ watch(
                     id="solman-device-group"
                     class="block w-full rounded-md border-gray-300 pr-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     placeholder="autogroup_Monitor"
-                    v-model="broker.deviceGroup"
+                    v-model="brokerSettings.device_group"
                   />
                   <div
                     class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"

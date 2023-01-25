@@ -141,6 +141,9 @@ async fn settings_update(
                 broker.port = port;
             }
 
+            // reset connected state until new broker instance updates its state
+            broker.connected = false;
+
             // write to file db
             match state.db.write().unwrap().put(DB_KEY, &broker) {
                 Ok(()) => (StatusCode::OK, Json(broker)).into_response(),
