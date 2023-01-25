@@ -79,7 +79,10 @@
           </div>
         </div>
         <div class="p-3">
-          <p class="text-center text-gray-400">v{{ appVersion }}</p>
+          <p class="text-center text-gray-400">v{{ mainVersion }}</p>
+          <p v-if="devVersion" class="text-center text-gray-400">
+            {{ devVersion }}
+          </p>
         </div>
       </nav>
 
@@ -94,7 +97,6 @@
 </template>
 
 <script setup lang="ts">
-import { getVersion } from "@tauri-apps/api/app";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import {
   AdjustmentsHorizontalIcon,
@@ -102,7 +104,10 @@ import {
   RectangleGroupIcon,
 } from "@heroicons/vue/24/outline";
 
-const appVersion = await getVersion();
+const fetch = useTauriFetch();
+let { data: info } = await fetch("/info");
+// @ts-ignore
+const [mainVersion, devVersion] = info.version.split("-");
 
 const sidebarNavigation = ref([
   { name: "Dashboard", href: "/", icon: RectangleGroupIcon, current: true },
@@ -139,9 +144,10 @@ const setActiveNav = (path: string) => {
   }
 };
 
-const navigateTo = (event) => {
+const navigateTo = (event: Event) => {
   useRouter().push(
-    sidebarNavigation.value.filter((nav) => nav.name === event.target.value)[0]
+    // @ts-ignore
+    sidebarNavigation.value.filter((nav) => nav.name === event.target?.value)[0]
       .href
   );
 };
