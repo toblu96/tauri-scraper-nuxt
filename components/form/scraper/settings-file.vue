@@ -1,25 +1,57 @@
-<script setup>
-import { useScraperStore } from "~~/stores/scrapers";
+<script setup lang="ts">
 import { Switch } from "@headlessui/vue";
 import { DocumentIcon } from "@heroicons/vue/24/solid";
 import { open } from "@tauri-apps/api/dialog";
-import { appDir } from "@tauri-apps/api/path";
+import { debounce } from "ts-debounce";
+
+interface IFile {
+  id: string;
+  name: string;
+  enabled: boolean;
+  last_update_utc?: string; // timestamp UTC
+  update_state?: string; // status of update - e.g. could not read | successful
+  last_version?: string; // latest file version
+  path: string;
+  mqtt_topic: string;
+}
+
 const route = useRoute();
-
-const scraperStore = useScraperStore();
-const scraper = scraperStore.fileScrapers.find(
-  (scraper) => scraper.id === route.params.id
+const scraper = ref<IFile>();
+const { data, refresh } = await useFetch<IFile[]>(
+  `http://localhost:8000/api/files`
 );
+scraper.value = data.value?.find((scraper) => scraper.id === route.params.id);
 
-// trigger file watcher change
+// trigger file settings change
+const isEditLocked = ref(false);
+const updateFileSettings = debounce(async () => {
+  console.log("changed");
+  let res = await useFetch(
+    `http://localhost:8000/api/files/${route.params.id}`,
+    {
+      method: "PATCH",
+      body: {
+        enabled: scraper.value?.enabled,
+        name: scraper.value?.name,
+        path: scraper.value?.path,
+      },
+    }
+  );
+  if (res.error.value) {
+    console.error(res.error.value);
+  }
+  await refresh();
+  isEditLocked.value = false;
+}, 1000);
 watch(
-  () => [scraper.path],
+  () => [scraper.value?.path, scraper.value?.name, scraper.value?.enabled],
   () => {
-    scraperStore.renewFileWatcher(scraper);
+    isEditLocked.value = true;
+    updateFileSettings();
   }
 );
 
-const changeFilePath = async (event) => {
+const changeFilePath = async () => {
   // Open a selection dialog for directories
   const selected = await open({
     directory: false,
@@ -31,12 +63,12 @@ const changeFilePath = async (event) => {
   } else {
     // user selected a single directory
     console.log(selected);
-    scraper.path = selected;
+    if (scraper.value) scraper.value.path = selected as string;
   }
 };
 </script>
 <template>
-  <form class="space-y-6" action="#" method="POST">
+  <form v-if="scraper" class="space-y-6" action="#" method="POST">
     <div class="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
       <div class="md:grid md:grid-cols-3 md:gap-6">
         <div class="md:col-span-1">
@@ -72,7 +104,6 @@ const changeFilePath = async (event) => {
                 <Switch
                   id="scraper-enabled"
                   v-model="scraper.enabled"
-                  @click="scraperStore.toggleEnableState(scraper.id)"
                   :class="[
                     scraper.enabled ? 'bg-indigo-500' : 'bg-gray-200',
                     'relative  inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
@@ -132,4 +163,7 @@ const changeFilePath = async (event) => {
       </div>
     </div>
   </form>
+  <div v-else>
+    <p>Could not find file..</p>
+  </div>
 </template>

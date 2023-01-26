@@ -1,14 +1,53 @@
-<script setup>
-import { useScraperStore } from "~~/stores/scrapers";
-const route = useRoute();
+<script setup lang="ts">
+import { debounce } from "ts-debounce";
 
-const scraperStore = useScraperStore();
-const scraper = scraperStore.fileScrapers.find(
-  (scraper) => scraper.id === route.params.id
+interface IFile {
+  id: string;
+  name: string;
+  enabled: boolean;
+  last_update_utc?: string; // timestamp UTC
+  update_state?: string; // status of update - e.g. could not read | successful
+  last_version?: string; // latest file version
+  path: string;
+  mqtt_topic: string;
+}
+
+const route = useRoute();
+const scraper = ref<IFile>();
+const { data, refresh } = await useFetch<IFile[]>(
+  `http://localhost:8000/api/files`
+);
+scraper.value = data.value?.find((scraper) => scraper.id === route.params.id);
+
+// trigger file settings change
+const isEditLocked = ref(false);
+const updateFileSettings = debounce(async () => {
+  console.log("changed");
+  let res = await useFetch(
+    `http://localhost:8000/api/files/${route.params.id}`,
+    {
+      method: "PATCH",
+      body: {
+        mqtt_topic: scraper.value?.mqtt_topic,
+      },
+    }
+  );
+  if (res.error.value) {
+    console.error(res.error.value);
+  }
+  await refresh();
+  isEditLocked.value = false;
+}, 1000);
+watch(
+  () => [scraper.value?.mqtt_topic],
+  () => {
+    isEditLocked.value = true;
+    updateFileSettings();
+  }
 );
 </script>
 <template>
-  <form class="space-y-6" action="#" method="POST">
+  <form v-if="scraper" class="space-y-6" action="#" method="POST">
     <div class="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
       <div class="md:grid md:grid-cols-3 md:gap-6">
         <div class="md:col-span-1">
@@ -27,7 +66,7 @@ const scraper = scraperStore.fileScrapers.find(
               >
               <input
                 type="text"
-                v-model="scraper.mqttTopic"
+                v-model="scraper.mqtt_topic"
                 name="scraper-topic"
                 id="scraper-topic"
                 placeholder="eh/test/topic"
