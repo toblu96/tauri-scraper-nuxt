@@ -6,10 +6,6 @@ import { DocumentPlusIcon } from "@heroicons/vue/24/outline";
 import { save, message, open } from "@tauri-apps/api/dialog";
 import { writeTextFile, readTextFile } from "@tauri-apps/api/fs";
 
-const emit = defineEmits<{
-  (e: "toggleEnableState", id: string, state: boolean): void;
-}>();
-
 interface IFile {
   id: string;
   name: string;
@@ -24,6 +20,8 @@ interface IFile {
 const files = ref<IFile[]>([]);
 let eventSource = new EventSource("http://localhost:8000/api/files/sse");
 eventSource.onmessage = function (event) {
+  if (blockEventSourceUpdates.value) return;
+  console.log("got update");
   try {
     let unsortedFiles: IFile[] = JSON.parse(event.data);
     // sort by path and id
@@ -52,6 +50,7 @@ type ImportedScraperProps = {
 };
 
 const isAddFileLocked = ref(false);
+const blockEventSourceUpdates = ref(false);
 const changedFilesPending = ref<string[]>([]);
 
 const selectedScrapers: Ref<string[]> = ref([]);
@@ -90,6 +89,19 @@ const deleteScrapers = async () => {
     }
   }
   selectedScrapers.value = [];
+};
+const handleToggle = async (id: string, state: boolean) => {
+  blockEventSourceUpdates.value = true;
+  let res = await useFetch(`http://localhost:8000/api/files/${id}`, {
+    method: "PATCH",
+    body: {
+      enabled: state,
+    },
+  });
+  if (res.error.value) {
+    console.error(res.error.value);
+  }
+  blockEventSourceUpdates.value = false;
 };
 const exportScrapers = async () => {
   try {
@@ -322,9 +334,7 @@ const importScrapers = async () => {
                 <td class="whitespace-nowrap py-4 text-sm text-gray-500">
                   <Switch
                     v-model="scraper.enabled"
-                    @click="
-                      $emit('toggleEnableState', scraper.id, !scraper.enabled)
-                    "
+                    @click="handleToggle(scraper.id, !scraper.enabled)"
                     :class="[
                       scraper.enabled ? 'bg-indigo-500' : 'bg-gray-200',
                       'relative ml-4 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',

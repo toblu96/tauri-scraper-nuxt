@@ -109,12 +109,11 @@ async fn async_watch(
     let mut active_watch_files: Vec<String> = Vec::new();
 
     // get all files from db and loop through it to add the watchers
-    let mut files = store.read().unwrap().get_unwrap::<Files>("files");
+    let files = store.write().unwrap().get_unwrap::<Files>("files");
     match files {
         Ok(mut files) => {
             // if files found, watch the parent folders for changes
-            let files_iterator = &mut files;
-            for (_uuid, file) in files_iterator {
+            for (_uuid, mut file) in &mut files {
                 // skip disabled file watchers
                 if !&file.enabled {
                     continue;
