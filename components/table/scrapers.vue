@@ -34,6 +34,7 @@ eventSource.onmessage = function (event) {
   }
 
   // release locks
+  isEnableLocked.value.length = 0;
   isAddFileLocked.value = false;
 };
 // close eventsource on page leave
@@ -52,6 +53,7 @@ type ImportedScraperProps = {
 const isAddFileLocked = ref(false);
 const blockEventSourceUpdates = ref(false);
 const changedFilesPending = ref<string[]>([]);
+const isEnableLocked = ref<string[]>([]);
 
 const selectedScrapers: Ref<string[]> = ref([]);
 const checked = ref(false);
@@ -92,6 +94,7 @@ const deleteScrapers = async () => {
 };
 const handleToggle = async (id: string, state: boolean) => {
   blockEventSourceUpdates.value = true;
+  isEnableLocked.value.push(id);
   let res = await useFetch(`http://localhost:8000/api/files/${id}`, {
     method: "PATCH",
     body: {
@@ -334,8 +337,11 @@ const importScrapers = async () => {
                 <td class="whitespace-nowrap py-4 text-sm text-gray-500">
                   <Switch
                     v-model="scraper.enabled"
+                    :disabled="isEnableLocked.includes(scraper.id)"
                     @click="handleToggle(scraper.id, !scraper.enabled)"
                     :class="[
+                      isEnableLocked.includes(scraper.id) &&
+                        ' cursor-wait opacity-30',
                       scraper.enabled ? 'bg-indigo-500' : 'bg-gray-200',
                       'relative ml-4 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
                     ]"

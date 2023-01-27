@@ -23,7 +23,7 @@ const { data, refresh } = await useFetch<IFile[]>(
 scraper.value = data.value?.find((scraper) => scraper.id === route.params.id);
 
 // trigger file settings change
-const isEditLocked = ref(false);
+const isEnableLocked = ref(false);
 const updateFileSettings = debounce(async () => {
   console.log("changed");
   let res = await useFetch(
@@ -41,12 +41,12 @@ const updateFileSettings = debounce(async () => {
     console.error(res.error.value);
   }
   await refresh();
-  isEditLocked.value = false;
+  isEnableLocked.value = false;
 }, 1000);
 watch(
   () => [scraper.value?.path, scraper.value?.name, scraper.value?.enabled],
-  () => {
-    isEditLocked.value = true;
+  (new_config, current_config) => {
+    if (new_config[2] != current_config[2]) isEnableLocked.value = true;
     updateFileSettings();
   }
 );
@@ -103,8 +103,10 @@ const changeFilePath = async () => {
               <div class="place-self-stretch">
                 <Switch
                   id="scraper-enabled"
+                  :disabled="isEnableLocked"
                   v-model="scraper.enabled"
                   :class="[
+                    isEnableLocked && ' cursor-wait opacity-30',
                     scraper.enabled ? 'bg-indigo-500' : 'bg-gray-200',
                     'relative  inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
                   ]"
