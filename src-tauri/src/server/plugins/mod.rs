@@ -1,4 +1,4 @@
-use super::store::AppState;
+use super::{router::settings::Broker, store::AppState};
 use crate::server::router::files::Files;
 use chrono;
 use microkv::MicroKV;
@@ -13,6 +13,8 @@ mod debouncer;
 mod file_version_reader;
 mod file_watcher;
 mod mqtt_client;
+
+static DB_KEY: &str = "broker";
 
 pub fn init(app_state: Arc<AppState>) {
     // Instantiate shared channel
@@ -125,32 +127,43 @@ fn update_file_version(
         file.last_update_utc = chrono::offset::Utc::now().to_string();
         file.update_state = "Success".to_string();
 
-        // send mqtt message
-        let device_id = mqtt_client
-            .current_client_config
-            .read()
-            .unwrap()
-            .device_id
-            .clone();
-        let device_group = mqtt_client
-            .current_client_config
-            .read()
-            .unwrap()
-            .device_group
-            .clone();
+        // only send mqtt message if broker is connected
+        let broker = db.read().unwrap().get_unwrap::<Broker>(DB_KEY);
+        match broker {
+            Ok(broker) => {
+                if broker.connected {
+                    // send mqtt message
+                    let device_id = mqtt_client
+                        .current_client_config
+                        .read()
+                        .unwrap()
+                        .device_id
+                        .clone();
+                    let device_group = mqtt_client
+                        .current_client_config
+                        .read()
+                        .unwrap()
+                        .device_group
+                        .clone();
 
-        mqtt_client.publish(
-            &file.mqtt_topic,
-            json!({
-              "deviceId": device_id,
-              "timestamp": chrono::offset::Utc::now().to_string(),
-              "group": device_group,
-              "measures": {
-                format!("{}", &file.name): &file.last_version,
-                format!("{}DataType", &file.name): "String",
-              },
-            }),
-        );
+                    mqtt_client.publish(
+                        &file.mqtt_topic,
+                        json!({
+                          "deviceId": device_id,
+                          "timestamp": chrono::offset::Utc::now().to_string(),
+                          "group": device_group,
+                          "measures": {
+                            format!("{}", &file.name): &file.last_version,
+                            format!("{}DataType", &file.name): "String",
+                          },
+                        }),
+                    );
+                } else {
+                    file.update_state = "MQTT broker connection failed".to_string()
+                }
+            }
+            Err(err) => println!("Could not get broker data due to: {err:?}"),
+        }
     }
 
     // store data to local db
