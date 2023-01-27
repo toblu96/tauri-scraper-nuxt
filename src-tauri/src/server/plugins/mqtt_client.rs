@@ -15,6 +15,7 @@ use crate::server::store::AppState;
 
 static DB_KEY: &str = "broker";
 
+#[derive(Clone)]
 pub struct MqttClient {
     pub client: Arc<RwLock<AsyncClient>>,
     store: Arc<RwLock<MicroKV>>,

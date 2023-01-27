@@ -1,5 +1,5 @@
-use super::debouncer;
-use crate::server::{router::files::Files, store::AppState};
+use super::{debouncer, mqtt_client::MqttClient};
+use crate::server::{plugins::handle_file_change, router::files::Files, store::AppState};
 use futures::{
     channel::mpsc::{channel, Receiver},
     SinkExt, StreamExt,
@@ -21,11 +21,16 @@ pub struct FileWatcher {
     store: Arc<RwLock<MicroKV>>,
     watcher_thread: Arc<RwLock<JoinHandle<()>>>,
     current_file_config: Arc<RwLock<Files>>,
+    mqtt_client: MqttClient,
 }
 
 impl FileWatcher {
     /// Init file watcher plugin
-    pub fn init(sender: Arc<RwLock<Sender<String>>>, app_state: &Arc<AppState>) -> Self {
+    pub fn init(
+        sender: Arc<RwLock<Sender<String>>>,
+        app_state: &Arc<AppState>,
+        mqtt_client: &MqttClient,
+    ) -> Self {
         // start file watcher
         let watch_store = app_state.db.clone();
         let watch_sender = sender.clone();
@@ -48,19 +53,20 @@ impl FileWatcher {
             store: app_state.db.clone(),
             watcher_thread: Arc::new(RwLock::new(watcher_thread)),
             current_file_config: Arc::new(RwLock::new(current_file_config)),
+            mqtt_client: mqtt_client.clone(),
         }
     }
 
     /// Refresh currently watched files
     pub fn refresh(&mut self) {
-        let current = self.current_file_config.read().unwrap().clone();
-        let new = self
+        let current_files = self.current_file_config.read().unwrap().clone();
+        let new_files = self
             .store
             .read()
             .unwrap()
             .get_unwrap::<Files>(DB_KEY)
             .unwrap();
-        if current != new {
+        if current_files != new_files {
             println!("refresh watchers");
             // first drop all active file watchers and end task
             self.watcher_thread.write().unwrap().abort();
@@ -73,9 +79,24 @@ impl FileWatcher {
                 }
             });
 
+            // trigger reread of changed files (for example enable state)
+            for (_uuid, new_file) in &new_files {
+                // skip disabled file watchers
+                if !&new_file.enabled {
+                    continue;
+                }
+
+                // check if there are any changes
+                if let Some(current_file) = current_files.get(_uuid) {
+                    if new_file != current_file {
+                        handle_file_change(&current_file.path, &self.store, &mut self.mqtt_client);
+                    }
+                }
+            }
+
             // store updated data to local state
             *self.watcher_thread.write().unwrap() = thread;
-            *self.current_file_config.write().unwrap() = new;
+            *self.current_file_config.write().unwrap() = new_files;
         }
     }
 }
@@ -119,7 +140,7 @@ async fn async_watch(
                     continue;
                 }
 
-                active_watch_files.push(file.path.clone());
+                active_watch_files.push(file.path.clone().replace("\\", "/"));
 
                 if let Some(folder_path) = Path::new(&file.path).parent() {
                     // only add folder watcher if not added yet
@@ -156,7 +177,7 @@ async fn async_watch(
     active_watch_files.push(db_string.clone());
 
     // check for changes on one of the watched paths
-    let mut debouncer = debouncer::Bouncer::new(Duration::from_secs(1));
+    let mut debouncer = debouncer::Bouncer::new(Duration::from_millis(500));
     while let Some(res) = rx.next().await {
         match res {
             Ok(event) => {

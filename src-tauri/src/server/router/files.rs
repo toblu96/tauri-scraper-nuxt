@@ -320,7 +320,7 @@ async fn files_index_sse(
 }
 
 /// Files schema.
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone, Default)]
 pub struct File {
     pub id: Uuid,
     pub name: String,

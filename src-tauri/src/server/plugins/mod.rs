@@ -1,6 +1,7 @@
 use super::store::AppState;
 use crate::server::router::files::Files;
 use chrono;
+use microkv::MicroKV;
 use serde_json::json;
 use std::{
     path::Path,
@@ -18,11 +19,11 @@ pub fn init(app_state: Arc<AppState>) {
     let (tx, mut rx) = broadcast::channel::<String>(40);
     let tx_file_watcher = Arc::new(RwLock::new(tx.clone()));
 
-    // init file listener
-    let mut file_watcher = file_watcher::FileWatcher::init(tx_file_watcher, &app_state);
-
     // init mqtt client
     let mut client = mqtt_client::MqttClient::init(&app_state);
+
+    // init file listener
+    let mut file_watcher = file_watcher::FileWatcher::init(tx_file_watcher, &app_state, &client);
 
     // check all enabled file versions on application start
     let files = app_state
@@ -36,7 +37,7 @@ pub fn init(app_state: Arc<AppState>) {
         if !&file.enabled {
             continue;
         }
-        handle_file_change(&file.path, &app_state, &mut client);
+        handle_file_change(&file.path, &app_state.db, &mut client);
     }
 
     // Create global listener - execute version and mqtt logic here
@@ -56,7 +57,7 @@ pub fn init(app_state: Arc<AppState>) {
             }
 
             // TODO: handle other file changes
-            handle_file_change(&path, &app_state, &mut client);
+            handle_file_change(&path, &app_state.db, &mut client);
         }
     });
 }
@@ -64,7 +65,7 @@ pub fn init(app_state: Arc<AppState>) {
 /// Gets the new file version on file change and stores it to the local DB
 fn handle_file_change(
     path: &String,
-    app_state: &Arc<AppState>,
+    db: &Arc<RwLock<MicroKV>>,
     mqtt_client: &mut mqtt_client::MqttClient,
 ) {
     if let Some(os_str) = Path::new(&path).extension() {
@@ -77,16 +78,11 @@ fn handle_file_change(
                         file_version_reader::get_file_version_from_file_properties(&path);
                     match file_version {
                         Ok(version) => {
-                            update_file_version(
-                                &app_state,
-                                mqtt_client,
-                                path.clone(),
-                                version.clone(),
-                            );
+                            update_file_version(db, mqtt_client, path.clone(), version.clone());
                         }
                         Err(err) => {
                             println!("Could not get file version due to: {err:?}");
-                            update_file_error(&app_state, path.clone(), err);
+                            update_file_error(db, path.clone(), err);
                         }
                     }
                 }
@@ -95,16 +91,11 @@ fn handle_file_change(
                     let hash = file_version_reader::get_file_meta_hash(&path);
                     match hash {
                         Ok(hash) => {
-                            update_file_version(
-                                &app_state,
-                                mqtt_client,
-                                path.clone(),
-                                hash.clone(),
-                            );
+                            update_file_version(db, mqtt_client, path.clone(), hash.clone());
                         }
                         Err(err) => {
                             println!("Could not get file version due to: {err:?}");
-                            update_file_error(&app_state, path.clone(), err);
+                            update_file_error(db, path.clone(), err);
                         }
                     }
                 }
@@ -115,23 +106,18 @@ fn handle_file_change(
 
 /// Write the new file version to the local DB
 fn update_file_version(
-    app_state: &Arc<AppState>,
+    db: &Arc<RwLock<MicroKV>>,
     mqtt_client: &mut mqtt_client::MqttClient,
     path: String,
     version: String,
 ) {
     // Update file state with version
-    let mut files = app_state
-        .db
-        .read()
-        .unwrap()
-        .get_unwrap::<Files>("files")
-        .unwrap();
+    let mut files = db.read().unwrap().get_unwrap::<Files>("files").unwrap();
     // update file version for all files with matching path
     let files_iterator = &mut files;
     for (_uuid, file) in files_iterator {
         // skip changes if path does not match
-        if file.path != path {
+        if file.path.replace("\\", "/") != path.replace("\\", "/") {
             continue;
         }
 
@@ -168,25 +154,20 @@ fn update_file_version(
     }
 
     // store data to local db
-    if let Err(err) = app_state.db.write().unwrap().put("files", &files) {
+    if let Err(err) = db.write().unwrap().put("files", &files) {
         println!("Could not write new file version to local DB: {err:?}")
     }
 }
 
 /// Writes a new file error to the local DB
-fn update_file_error(app_state: &Arc<AppState>, path: String, error: String) {
+fn update_file_error(db: &Arc<RwLock<MicroKV>>, path: String, error: String) {
     // Update file state with version
-    let mut files = app_state
-        .db
-        .read()
-        .unwrap()
-        .get_unwrap::<Files>("files")
-        .unwrap();
+    let mut files = db.read().unwrap().get_unwrap::<Files>("files").unwrap();
     // update file version for all files with matching path
     let files_iterator = &mut files;
     for (_uuid, file) in files_iterator {
         // skip changes if path does not match
-        if file.path != path {
+        if file.path.replace("\\", "/") != path {
             continue;
         }
 
@@ -195,7 +176,7 @@ fn update_file_error(app_state: &Arc<AppState>, path: String, error: String) {
     }
 
     // store data to local db
-    if let Err(err) = app_state.db.write().unwrap().put("files", &files) {
+    if let Err(err) = db.write().unwrap().put("files", &files) {
         println!("Could not write new file version to local DB: {err:?}")
     }
 }
