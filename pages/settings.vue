@@ -30,7 +30,7 @@ watchEffect(async () => {
 
 <template>
   <div class="space-y-6 divide-y divide-gray-200 pt-8">
-    <div class="px-6">
+    <section class="space-y-6 px-6">
       <div>
         <h2 class="text-lg font-medium leading-6 text-gray-900">
           Application Settings
@@ -73,8 +73,9 @@ watchEffect(async () => {
           </SwitchGroup>
         </ul>
       </div>
-    </div>
-    <section class="space-y-4 p-6">
+      <ActionPanelSettingsBackend />
+    </section>
+    <section class="space-y-4 p-6 pb-0">
       <h2 class="text-lg font-medium leading-6 text-gray-900">
         Communication Settings
       </h2>
