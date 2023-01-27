@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Ref, ref, computed } from "vue";
 import { Switch } from "@headlessui/vue";
-import { useScraperStore } from "~~/stores/scrapers";
 import { DocumentPlusIcon } from "@heroicons/vue/24/outline";
 import { save, message, open } from "@tauri-apps/api/dialog";
 import { writeTextFile, readTextFile } from "@tauri-apps/api/fs";
+import { z } from "zod";
 
 interface IFile {
   id: string;
@@ -16,6 +16,13 @@ interface IFile {
   path: string;
   mqtt_topic: string;
 }
+
+const zodFileSchema = z.object({
+  name: z.string(),
+  path: z.string(),
+  mqtt_topic: z.string(),
+});
+
 // subscribe to active files from sse backend
 const files = ref<IFile[]>([]);
 let eventSource = new EventSource("http://localhost:8000/api/files/sse");
@@ -42,12 +49,10 @@ onUnmounted(() => {
   eventSource.close();
 });
 
-const scraperStore = useScraperStore();
-
 type ImportedScraperProps = {
   name: string;
   path: string;
-  mqttTopic: string;
+  mqtt_topic: string;
 };
 
 const isAddFileLocked = ref(false);
@@ -110,7 +115,7 @@ const exportScrapers = async () => {
   try {
     // open save dialog
     const filePath = await save({
-      defaultPath: "settings",
+      defaultPath: "files_configuration",
       filters: [
         {
           name: "json",
@@ -124,16 +129,15 @@ const exportScrapers = async () => {
       return;
     }
     // filter content from selected scrapers and drop unnecessary keys
-    const data = scraperStore.scraperList
+    const data = files.value
       .filter((scraper) => selectedScrapers.value.includes(scraper.id))
       .map(
         ({
           enabled,
-          stop,
           id,
-          lastUpdateUTC,
-          lastVersion,
-          updateState,
+          last_update_utc,
+          last_version,
+          update_state,
           ...keepAttrs
         }) => keepAttrs
       );
@@ -147,6 +151,7 @@ const exportScrapers = async () => {
   }
 };
 const importScrapers = async () => {
+  let importErrors: string = "";
   try {
     // get file path from settings file
     const filePath = (await open({
@@ -170,30 +175,45 @@ const importScrapers = async () => {
     );
     // add files to store
     for (const file of files) {
-      if (!file.name || !file.path || !file.mqttTopic) {
-        await message(
-          `Scraper is missing some params: \n
-            name:\t ${file.name || "-"}
-            path:\t ${file.path || "-"}
-            mqttTopic:\t ${file.mqttTopic || "-"}\n` +
-            `\nSkip that one and try next.`,
-          {
-            title: "Tauri | File scraper import",
-            type: "warning",
-          }
-        );
+      isAddFileLocked.value = true;
+
+      // validate incoming file structure
+      let parsedFile = zodFileSchema.safeParse(file);
+
+      if (!parsedFile.success) {
+        console.log(parsedFile.error.message);
+        importErrors += `File '${file.name}' \n`;
+        for (let msg of parsedFile.error.issues) {
+          importErrors += `- '${msg.path[0]}' -> ${msg.message} \n`;
+        }
+        importErrors += `\n`;
         continue;
       }
-      scraperStore.addFileScraper({
-        enabled: false,
-        name: file.name || "Default name",
-        path: file.path || "",
-        mqttTopic: file.mqttTopic || "",
+
+      let res = await useFetch(`http://localhost:8000/api/files`, {
+        method: "POST",
+        body: {
+          enabled: false,
+          mqtt_topic: file.mqtt_topic,
+          name: file.name,
+          path: file.path,
+        },
+      });
+      if (res.error.value) {
+        console.error(res.error.value);
+      }
+    }
+
+    // print summarized error message
+    if (importErrors != "") {
+      await message(`Could not import all files: \n\n ${importErrors}`, {
+        title: "Tauri | Files import",
+        type: "warning",
       });
     }
   } catch (error) {
     message(`Could not import scrapers: \n${error}`, {
-      title: "Tauri | File scraper import",
+      title: "Tauri | Files import",
       type: "warning",
     });
   }
@@ -212,8 +232,9 @@ const importScrapers = async () => {
     <div class="mt-4 space-x-4 sm:mt-0 sm:ml-16 sm:flex-none">
       <button
         @click="importScrapers()"
+        :disabled="isAddFileLocked"
         type="button"
-        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:animate-pulse disabled:cursor-not-allowed disabled:opacity-30"
       >
         Import
       </button>
@@ -306,7 +327,7 @@ const importScrapers = async () => {
                 :class="[
                   selectedScrapers.includes(scraper.id) && 'bg-gray-50 ',
                   changedFilesPending.includes(scraper.id) &&
-                    'bg-red-100 opacity-30',
+                    'bg-red-50 opacity-30',
                 ]"
               >
                 <td class="relative w-12 px-6 sm:w-16 sm:px-8">
