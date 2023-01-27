@@ -46,10 +46,11 @@ pub async fn start(port: u16) {
         .nest("/api", router::routes())
         .with_state(app_state.clone())
         .layer(
-            CorsLayer::new()
-                .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
-                .allow_methods(Any)
-                .allow_headers(Any),
+            // CorsLayer::new()
+            //     .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+            //     .allow_methods(Any)
+            //     .allow_headers(Any),
+            CorsLayer::permissive(),
         );
 
     // init plugins
