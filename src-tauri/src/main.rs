@@ -10,7 +10,6 @@ use tauri::{
 
 use clap::Parser;
 use tauri_plugin_autostart::MacosLauncher;
-use tauri_plugin_fs_watch::Watcher;
 use tauri_plugin_store::PluginBuilder;
 
 mod server;
@@ -102,9 +101,6 @@ async fn start_gui() {
             MacosLauncher::LaunchAgent,
             None,
         ))
-        .plugin(Watcher::default())
-        .plugin(tauri_plugin_mqtt_client::init())
-        .plugin(tauri_plugin_file_version::init())
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app_handle, event| match event {
