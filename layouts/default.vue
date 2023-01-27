@@ -104,10 +104,13 @@ import {
   RectangleGroupIcon,
 } from "@heroicons/vue/24/outline";
 
-const fetch = useTauriFetch();
-let { data: info } = await fetch("/info");
+interface IInfo {
+  up: boolean;
+  version: string;
+}
+const { data: info } = await useFetch<IInfo>(`http://localhost:8000/api/info`);
 // @ts-ignore
-const [mainVersion, devVersion] = info.version?.split("-") || [
+const [mainVersion, devVersion] = info.value.version?.split("-") || [
   "0.0.0",
   undefined,
 ];
