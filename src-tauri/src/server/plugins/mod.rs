@@ -1,6 +1,6 @@
 use super::{router::settings::Broker, store::AppState};
 use crate::server::router::files::Files;
-use chrono;
+use chrono::{self, SecondsFormat};
 use microkv::MicroKV;
 use serde_json::json;
 use std::{
@@ -150,7 +150,7 @@ fn update_file_version(
                         &file.mqtt_topic,
                         json!({
                           "deviceId": device_id,
-                          "timestamp": chrono::offset::Utc::now().to_string(),
+                          "timestamp": format!("{}", chrono::offset::Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)),
                           "group": device_group,
                           "measures": {
                             format!("{}", &file.name): &file.last_version,
