@@ -15,7 +15,12 @@ let eventSource = new EventSource("http://localhost:8000/api/files/sse");
 eventSource.onmessage = function (event) {
   try {
     let files: IFile[] = JSON.parse(event.data);
-    activeFiles.value = files.filter((file) => file.enabled);
+    activeFiles.value = files
+      .filter((file) => file.enabled)
+      .sort((a, b) => {
+        if (a.path == b.path) return a.id.localeCompare(b.id);
+        return a.path.localeCompare(b.path);
+      });
   } catch (error) {
     console.error(`Could not update files: ${error}`);
   }
