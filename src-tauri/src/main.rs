@@ -15,7 +15,7 @@ use tauri_plugin_store::PluginBuilder;
 mod server;
 
 #[derive(Parser)]
-#[command(name = "E+H Version Scraper")]
+#[command(name = "E+H File Version Monitor")]
 #[command(author = "Tobias Blum <tobias.blum@endress.com>")]
 #[command(version = "0.1")]
 #[command(about = "Scrapes file versions from different file types.", long_about = None)]

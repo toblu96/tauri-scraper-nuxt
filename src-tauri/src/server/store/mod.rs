@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-pub static FILE_DB_PATH: &str = "C:/ProgramData/Tauri/EH Version Scraper";
+pub static FILE_DB_PATH: &str = "C:/ProgramData/Tauri/EH File Version Monitor";
 pub static FILE_DB_NAME: &str = "application_db";
 
 static DB_KEY_FILES: &str = "files";

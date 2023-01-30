@@ -7,7 +7,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "EH Version Scraper",
+    "productName": "EH File Version Monitor",
     "version": "0.0.3"
   },
   "tauri": {
@@ -86,7 +86,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "EH Version Scraper",
+        "title": "EH File Version Monitor",
         "width": 880
       }
     ],

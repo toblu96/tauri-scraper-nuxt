@@ -1,4 +1,4 @@
-<h1 align="center">EH Version Scraper</h1>
+<h1 align="center">EH File Version Monitor</h1>
 Checks files and services for version change on a windows machine.
 
 <br/>

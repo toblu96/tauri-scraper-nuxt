@@ -36,7 +36,7 @@
                     Check current file location of server executable.
                     <div class="mt-2">
                       <code class="rounded-md bg-gray-100 px-2 py-1"
-                        >C:\Program Files\EH Version Scraper</code
+                        >C:\Program Files\EH File Version Monitor</code
                       >
                     </div>
                   </li>
@@ -61,7 +61,7 @@
                         class="whitespace-pre-line rounded-md bg-gray-100 px-4 py-3"
                       >
                        <b>Create task</b>
-                        name:           EH Version Scraper Backend
+                        name:           EH File Version Monitor Backend
                         description:    Backend service for FC monitoring application
 
                        <b>Trigger</b>
