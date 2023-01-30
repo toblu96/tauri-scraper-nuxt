@@ -85,7 +85,6 @@
                 />
                 <p>
                   Last updated on
-                  {{ " " }}
                   <time :datetime="scraper.last_update_utc">{{
                     new Date(scraper.last_update_utc as string).toLocaleString()
                   }}</time>
