@@ -25,6 +25,21 @@
         "scope": [
           "http://**"
         ]
+      },
+      "shell": {
+        "all": true,
+        "execute": true,
+        "open": true,
+        "scope": [
+          {
+            "name": "open-task-scheduler",
+            "cmd": "control",
+            "args": [
+              "schedtasks"
+            ]
+          }
+        ],
+        "sidecar": true
       }
     },
     "bundle": {
