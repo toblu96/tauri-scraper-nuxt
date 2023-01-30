@@ -1,6 +1,6 @@
-use axum::{http::HeaderValue, response::Redirect, routing::get, Router};
+use axum::{response::Redirect, routing::get, Router};
 use std::net::SocketAddr;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
