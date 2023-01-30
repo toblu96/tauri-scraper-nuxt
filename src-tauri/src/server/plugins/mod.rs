@@ -180,7 +180,7 @@ fn update_file_error(db: &Arc<RwLock<MicroKV>>, path: String, error: String) {
     let files_iterator = &mut files;
     for (_uuid, file) in files_iterator {
         // skip changes if path does not match
-        if file.path.replace("\\", "/") != path {
+        if file.path.replace("\\", "/") != path.replace("\\", "/") {
             continue;
         }
 

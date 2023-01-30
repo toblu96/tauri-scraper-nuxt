@@ -66,16 +66,47 @@ const changeFilePath = async () => {
     if (scraper.value) scraper.value.path = selected as string;
   }
 };
+
+// get realtime status update of file state
+const lastFileState = ref<string>("");
+let eventSource = new EventSource("http://localhost:8000/api/files/sse");
+eventSource.onmessage = function (event) {
+  console.log("got one");
+  try {
+    let files: IFile[] = JSON.parse(event.data);
+    lastFileState.value =
+      files.filter((file) => file.id == route.params.id)[0].update_state ||
+      "could not update state";
+  } catch (error) {
+    console.error(`Could not update files: ${error}`);
+  }
+};
+// close eventsource on page leave
+onUnmounted(() => {
+  eventSource.close();
+});
 </script>
 <template>
   <form v-if="scraper" class="space-y-6" action="#" method="POST">
     <div class="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
       <div class="md:grid md:grid-cols-3 md:gap-6">
-        <div class="md:col-span-1">
-          <h3 class="text-lg font-medium leading-6 text-gray-900">File</h3>
-          <p class="mt-1 text-sm text-gray-500">
-            Specify the file and content you want to scrape.
-          </p>
+        <div class="relative w-full md:col-span-1">
+          <div>
+            <h3 class="text-lg font-medium leading-6 text-gray-900">File</h3>
+            <p class="mt-1 text-sm text-gray-500">
+              Specify the file and content you want to scrape.
+            </p>
+          </div>
+          <span
+            class="absolute bottom-0 inline-flex items-center rounded-md px-2.5 py-0.5 text-sm font-medium"
+            :class="
+              lastFileState == 'Success'
+                ? 'bg-green-100 text-green-800'
+                : 'bg-red-100 text-red-800'
+            "
+          >
+            {{ lastFileState }}
+          </span>
         </div>
         <div class="mt-5 md:col-span-2 md:mt-0">
           <div class="grid grid-cols-6 gap-6">
