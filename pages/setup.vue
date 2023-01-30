@@ -101,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { fetch } from "@tauri-apps/api/http";
 import { InformationCircleIcon } from "@heroicons/vue/20/solid";
 import { Command, open } from "@tauri-apps/api/shell";
 definePageMeta({
@@ -111,6 +112,23 @@ const openTaskScheduler = async () => {
   const output = await new Command("open-task-scheduler").execute();
   console.log(output);
 };
+
+// check if backend is online again
+try {
+  // use Tauri fetch because here we can specify timeout
+  const response = await fetch("http://localhost:8000/api/info", {
+    method: "GET",
+    timeout: {
+      secs: 0,
+      nanos: 500000000, // 500ms
+    },
+  });
+  if (response.ok) {
+    navigateTo("/");
+  }
+} catch (error) {
+  console.error("Could not connect to backend: ", error);
+}
 </script>
 
 <style>
