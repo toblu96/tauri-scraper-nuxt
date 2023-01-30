@@ -1,8 +1,8 @@
 <template>
   <div class="h-full bg-gray-100">
-    <div class="mx-auto h-full max-w-7xl overflow-auto py-12 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-3xl">
-        <div class="bg-white shadow sm:rounded-lg">
+    <div class="mx-auto h-full max-w-7xl py-12 sm:px-6 lg:px-8">
+      <div class="mx-auto h-full max-w-3xl">
+        <div class="h-full overflow-auto bg-white shadow sm:rounded-lg">
           <div class="px-4 py-5 sm:p-6">
             <h3 class="text-lg font-medium leading-6 text-gray-900">
               Seems like your backend is not running..
@@ -54,7 +54,7 @@
                     </div>
                   </li>
                   <li>
-                    If service does not exist, add it as "simple task" with the
+                    If service does not exist, create a "basic task" with the
                     following configuration:
                     <div class="mt-2">
                       <pre
@@ -65,16 +65,30 @@
                         description:    Backend service for FC monitoring application
 
                        <b>Trigger</b>
-                        On machine start
+                        When the computer starts
                         
                        <b>Action</b>
-                        Start application
+                        Start a program
 
                        <b>Application</b>
-                        programm:   <i>Add application path from above</i> 
-                        argument: "-s"
+                        programm/script:   <i>Select application .exe from the path above.</i> 
+                        add arguments: "-s"
+                      </pre>
+                    </div>
+                  </li>
+                  <li>
+                    Finish task setup and reopen its properties. There are some
+                    other changes needed. Save them.
+                    <div class="mt-2">
+                      <pre
+                        class="whitespace-pre-line rounded-md bg-gray-100 px-4 py-3"
+                      >
+                       <b>General</b>
+                        Select "Run wheter user is logged on or not"
+                        Check "Do not store password."
 
-                        Important: Run application even if no user is logged in! To do so, go back to task settings.
+                       <b>Settings</b>
+                        Uncheck "Stop the task if it runs longer than: ..."
                       </pre>
                     </div>
                   </li>
@@ -89,6 +103,10 @@
                         <span aria-hidden="true"> &rarr;</span>
                       </button>
                     </div>
+                  </li>
+                  <li>
+                    Press F5 inside this application to reload it. Doing so, you
+                    will exit the setup mode. Enjoy your day. 😊
                   </li>
                 </ol>
               </div>
