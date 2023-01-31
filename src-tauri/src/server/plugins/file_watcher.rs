@@ -189,11 +189,22 @@ async fn async_watch(
                         continue;
                     }
                     // debounce change events from listener (separate for each file path)
-                    if let Some(_) = debouncer.debounce(path_string.clone(), || return true) {
-                        // println!("Sent from {path:?}");
-                        if let Err(err) = sender.read().unwrap().send(path_string) {
-                            println!("Could not send file change event due to: {err:?}")
-                        };
+                    let tmp_sender = sender.clone();
+                    let tmp_path_string = path_string.clone();
+                    if let Err(err) = debouncer.debounce(
+                        path_string.clone(),
+                        Box::new(move || {
+                            if let Err(err) = tmp_sender
+                                .clone()
+                                .read()
+                                .unwrap()
+                                .send(tmp_path_string.clone())
+                            {
+                                println!("Could not send file change event due to: {err:?}")
+                            };
+                        }),
+                    ) {
+                        println!("debounce error: {:?}", err)
                     }
                 }
             }
