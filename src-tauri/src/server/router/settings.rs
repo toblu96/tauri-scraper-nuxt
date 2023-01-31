@@ -105,7 +105,8 @@ async fn settings_update(
     State(state): State<Arc<AppState>>,
     Json(input): Json<BrokerUpdateParams>,
 ) -> impl IntoResponse {
-    let data = state.db.read().unwrap().get_unwrap::<Broker>(DB_KEY);
+    let lock = state.db.write().unwrap();
+    let data = lock.get_unwrap::<Broker>(DB_KEY);
     match data {
         Ok(mut broker) => {
             // check for changes on each provided input param
@@ -145,7 +146,7 @@ async fn settings_update(
             broker.connected = false;
 
             // write to file db
-            match state.db.write().unwrap().put(DB_KEY, &broker) {
+            match lock.put(DB_KEY, &broker) {
                 Ok(()) => (StatusCode::OK, Json(broker)).into_response(),
                 Err(err) => (
                     StatusCode::INTERNAL_SERVER_ERROR,

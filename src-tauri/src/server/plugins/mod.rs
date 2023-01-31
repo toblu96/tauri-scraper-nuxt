@@ -114,7 +114,8 @@ fn update_file_version(
     version: String,
 ) {
     // Update file state with version
-    let mut files = db.read().unwrap().get_unwrap::<Files>("files").unwrap();
+    let lock = db.write().unwrap();
+    let mut files = lock.get_unwrap::<Files>("files").unwrap();
     // update file version for all files with matching path
     let files_iterator = &mut files;
     for (_uuid, file) in files_iterator {
@@ -128,7 +129,7 @@ fn update_file_version(
         file.update_state = "Success".to_string();
 
         // only send mqtt message if broker is connected
-        let broker = db.read().unwrap().get_unwrap::<Broker>(DB_KEY);
+        let broker = lock.get_unwrap::<Broker>(DB_KEY);
         match broker {
             Ok(broker) => {
                 if broker.connected {
@@ -167,7 +168,7 @@ fn update_file_version(
     }
 
     // store data to local db
-    if let Err(err) = db.write().unwrap().put("files", &files) {
+    if let Err(err) = lock.put("files", &files) {
         println!("Could not write new file version to local DB: {err:?}")
     }
 }
@@ -175,7 +176,8 @@ fn update_file_version(
 /// Writes a new file error to the local DB
 fn update_file_error(db: &Arc<RwLock<MicroKV>>, path: String, error: String) {
     // Update file state with version
-    let mut files = db.read().unwrap().get_unwrap::<Files>("files").unwrap();
+    let lock = db.write().unwrap();
+    let mut files = lock.get_unwrap::<Files>("files").unwrap();
     // update file version for all files with matching path
     let files_iterator = &mut files;
     for (_uuid, file) in files_iterator {
@@ -189,7 +191,7 @@ fn update_file_error(db: &Arc<RwLock<MicroKV>>, path: String, error: String) {
     }
 
     // store data to local db
-    if let Err(err) = db.write().unwrap().put("files", &files) {
+    if let Err(err) = lock.put("files", &files) {
         println!("Could not write new file version to local DB: {err:?}")
     }
 }

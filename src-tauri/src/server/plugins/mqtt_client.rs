@@ -120,7 +120,7 @@ fn create_mqtt_client(
 
     // create mqtt client
     let mut mqttoptions = MqttOptions::new(&client_id, &host, port);
-    mqttoptions.set_keep_alive(Duration::from_secs(5));
+    mqttoptions.set_keep_alive(Duration::from_secs(30));
 
     // use auth if provided
     if !&username.is_empty() && !&password.is_empty() {
@@ -168,14 +168,15 @@ fn create_mqtt_client(
 
 /// Save new broker connection state to local file db
 fn update_broker_state(store: &Arc<RwLock<MicroKV>>, connected: bool, state: &str) {
-    let mut broker = store.read().unwrap().get_unwrap::<Broker>(DB_KEY);
+    let lock = store.write().unwrap();
+    let mut broker = lock.get_unwrap::<Broker>(DB_KEY);
     match broker {
         Ok(ref mut broker) => {
             broker.state = state.to_string();
             broker.connected = connected;
 
             // write to file db
-            if let Err(err) = store.write().unwrap().put(DB_KEY, &broker.clone()) {
+            if let Err(err) = lock.put(DB_KEY, &broker.clone()) {
                 println!("Could not update broker state on local file db: {err:?}")
             }
         }

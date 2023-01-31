@@ -103,16 +103,12 @@ pub async fn files_create(
     };
 
     // update hash map
-    let mut files = state
-        .db
-        .read()
-        .unwrap()
-        .get_unwrap::<Files>(DB_KEY)
-        .unwrap();
+    let lock = state.db.write().unwrap();
+    let mut files = lock.get_unwrap::<Files>(DB_KEY).unwrap();
 
     files.insert(file.id, file.clone());
 
-    if let Err(err) = state.db.write().unwrap().put(DB_KEY, &files) {
+    if let Err(err) = lock.put(DB_KEY, &files) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(DBError::WriteError(format!(
@@ -174,12 +170,8 @@ async fn files_update(
     State(state): State<Arc<AppState>>,
     Json(input): Json<FileUpdateParams>,
 ) -> impl IntoResponse {
-    let mut files = state
-        .db
-        .read()
-        .unwrap()
-        .get_unwrap::<Files>(DB_KEY)
-        .unwrap();
+    let lock = state.db.write().unwrap();
+    let mut files = lock.get_unwrap::<Files>(DB_KEY).unwrap();
 
     if let Some(file) = files.get_mut(&id) {
         if let Some(name) = input.name {
@@ -219,7 +211,7 @@ async fn files_update(
     }
 
     // write to file db
-    match state.db.write().unwrap().put(DB_KEY, &files) {
+    match lock.put(DB_KEY, &files) {
         Ok(()) => (StatusCode::OK, Json(files.get(&id))).into_response(),
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -254,12 +246,8 @@ async fn files_delete(
     Path(id): Path<Uuid>,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    let mut files = state
-        .db
-        .read()
-        .unwrap()
-        .get_unwrap::<Files>(DB_KEY)
-        .unwrap();
+    let lock = state.db.write().unwrap();
+    let mut files = lock.get_unwrap::<Files>(DB_KEY).unwrap();
 
     // try to remove locally
     if let None = files.remove(&id) {
@@ -271,7 +259,7 @@ async fn files_delete(
     }
 
     // write to file db
-    if let Err(err) = state.db.write().unwrap().put(DB_KEY, &files) {
+    if let Err(err) = lock.put(DB_KEY, &files) {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(DBError::WriteError(format!(
