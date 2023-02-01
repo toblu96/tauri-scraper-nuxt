@@ -130,41 +130,46 @@ async fn async_watch(
     let mut active_watch_files: Vec<String> = Vec::new();
 
     // get all files from db and loop through it to add the watchers
-    let files = store.write().unwrap().get_unwrap::<Files>("files");
-    match files {
-        Ok(mut files) => {
-            // if files found, watch the parent folders for changes
-            for (_uuid, mut file) in &mut files {
-                // skip disabled file watchers
-                if !&file.enabled {
-                    continue;
-                }
-
-                active_watch_files.push(file.path.clone().replace("\\", "/"));
-
-                if let Some(folder_path) = Path::new(&file.path).parent() {
-                    // only add folder watcher if not added yet
-                    if !new_watch_paths.contains(&String::from(folder_path.to_string_lossy())) {
-                        if let Err(err) = watcher.watch(folder_path, RecursiveMode::NonRecursive) {
-                            println!(
-                                "Could not add file watcher '{folder_path:?}' due to: {err:?}"
-                            );
-                            // update file state in case of error and disable watcher
-                            file.update_state = err.to_string();
-                            file.enabled = false;
-                            continue;
-                        };
-                        new_watch_paths.push(String::from(folder_path.to_string_lossy()));
+    {
+        let lock = store.write().unwrap();
+        let files = lock.get_unwrap::<Files>("files");
+        match files {
+            Ok(mut files) => {
+                // if files found, watch the parent folders for changes
+                for (_uuid, mut file) in &mut files {
+                    // skip disabled file watchers
+                    if !&file.enabled {
+                        continue;
                     }
-                };
+
+                    active_watch_files.push(file.path.clone().replace("\\", "/"));
+
+                    if let Some(folder_path) = Path::new(&file.path).parent() {
+                        // only add folder watcher if not added yet
+                        if !new_watch_paths.contains(&String::from(folder_path.to_string_lossy())) {
+                            if let Err(err) =
+                                watcher.watch(folder_path, RecursiveMode::NonRecursive)
+                            {
+                                println!(
+                                    "Could not add file watcher '{folder_path:?}' due to: {err:?}"
+                                );
+                                // update file state in case of error and disable watcher
+                                file.update_state = err.to_string();
+                                file.enabled = false;
+                                continue;
+                            };
+                            new_watch_paths.push(String::from(folder_path.to_string_lossy()));
+                        }
+                    };
+                }
+                if let Err(err) = lock.put("files", &files) {
+                    println!("Could not update file state on local file db: {err:?}")
+                }
             }
-            if let Err(err) = store.write().unwrap().put("files", &files) {
-                println!("Could not update file state on local file db: {err:?}")
+            Err(err) => {
+                // if no file found. skip this part
+                println!("Could not add file watcher because there are no configured ones. {err:?}")
             }
-        }
-        Err(err) => {
-            // if no file found. skip this part
-            println!("Could not add file watcher because there are no configured ones. {err:?}")
         }
     }
     // always watch for local db file changes
