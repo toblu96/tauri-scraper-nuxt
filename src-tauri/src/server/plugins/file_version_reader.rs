@@ -17,7 +17,7 @@ pub fn get_file_version_from_file_properties(path: &str) -> Result<String, Strin
 ///
 /// Can be used for files without a specific file version.
 pub fn get_file_meta_hash(path: &str) -> Result<String, String> {
-    let file = std::fs::File::open(&path);
+    let file = std::fs::File::options().read(true).write(false).open(&path);
 
     match file {
         Ok(file) => {
