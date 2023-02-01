@@ -131,7 +131,9 @@ watch(
             </p>
           </div>
           <span
-            v-if="isBrokerReconnecting"
+            v-if="
+              isBrokerReconnecting || brokerSettings.state == 'Reconnecting..'
+            "
             class="absolute bottom-0 inline-flex items-center rounded-md bg-yellow-100 px-2.5 py-0.5 text-sm font-medium text-yellow-800"
           >
             <svg

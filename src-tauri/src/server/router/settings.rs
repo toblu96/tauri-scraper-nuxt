@@ -144,6 +144,7 @@ async fn settings_update(
 
             // reset connected state until new broker instance updates its state
             broker.connected = false;
+            broker.state = "Reconnecting..".to_string();
 
             // write to file db
             match lock.put(DB_KEY, &broker) {
