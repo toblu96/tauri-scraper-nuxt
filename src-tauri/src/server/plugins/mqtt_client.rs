@@ -217,7 +217,7 @@ pub fn spawn_eventloop_task(
                         ConnectionError::MqttState(e) => {
                             println!("Pause eventloop task due to: {}", e);
                             update_broker_state(&store, false, &e.to_string());
-                            std::thread::sleep(std::time::Duration::from_secs(1))
+                            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                         }
                         ConnectionError::Tls(TlsError::Io(e)) => {
                             // prevent filling log with unnecessary socket errors, e.g.:
@@ -253,7 +253,7 @@ pub fn spawn_eventloop_task(
                             } else {
                                 println!("Pause eventloop task due to: {}", error);
                                 update_broker_state(&store, false, &error.to_string());
-                                std::thread::sleep(std::time::Duration::from_secs(10))
+                                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
                             }
                         }
                         ConnectionError::ConnectionRefused(e) => {
