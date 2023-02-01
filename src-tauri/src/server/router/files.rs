@@ -178,12 +178,17 @@ async fn files_update(
             file.name = name;
         }
 
-        if let Some(enabled) = input.enabled {
-            file.enabled = enabled;
-        }
-
         if let Some(path) = input.path {
             file.path = path;
+        }
+
+        if let Some(enabled) = input.enabled {
+            // only enable file if file path is valid
+            if std::path::Path::new(&file.path).exists() {
+                file.enabled = enabled;
+            } else {
+                file.enabled = false;
+            }
         }
 
         if let Some(mqtt_topic) = input.mqtt_topic {
