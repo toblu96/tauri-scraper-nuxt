@@ -1,4 +1,5 @@
 use axum::{response::Redirect, routing::get, Router};
+use log::info;
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
@@ -58,7 +59,7 @@ pub async fn start(port: u16) {
 
     // run it
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    println!("listening on {}", addr);
+    info!("Server started, listening on {}", &addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await

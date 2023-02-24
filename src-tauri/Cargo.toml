@@ -37,6 +37,8 @@ rumqttc = "0.17.0"
 rustls-native-certs = "0.6.2"
 rustls = "0.20.8"
 tokio-stream = "0.1.11"
+log = "0.4.17"
+log4rs = "1.2.0"
 
 [features]
 # by default Tauri runs in production mode

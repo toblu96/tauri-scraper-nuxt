@@ -3,6 +3,7 @@
     windows_subsystem = "windows"
 )]
 
+use log::info;
 use tauri::{
     CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem,
     WindowEvent,
@@ -12,6 +13,7 @@ use clap::Parser;
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_store::PluginBuilder;
 
+mod logger;
 mod server;
 
 #[derive(Parser)]
@@ -37,7 +39,10 @@ async fn main() {
 
     match cli.server {
         true => {
-            println!("Starting Http Server..");
+            if let Err(err) = logger::init() {
+                println!("{err}");
+            }
+            info!("Starting Http Server..");
             server::start(cli.port).await;
         }
         false => {
