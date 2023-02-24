@@ -31,15 +31,40 @@ Globally install WebView2. Tauri uses it to run and display the frontend code. D
 
 ## Application Installation
 
-> Under construction...
+The main application can be installed with the delivered `.msi` file. To run the backend http server on server boot, the installed `.exe` needs to be added as a Windows task and executed on server boot. Don't forget to run the task even if no user is logged in.
 
-The main application can be installed with the delivered `.msi` file. To run the backend http server on server boot, the installed `.exe` needs to be added as a Windows task and executed on server boot. Don't forget to run the task even no user is logged in.
+1. General Settings
+
+![General Settings](./docs/general-settings.png)
+
+2. Triggers
+
+![Triggers](./docs/triggers.png)
+
+3. Actions
+
+![Actions](./docs/actions.png)
+
+4. Conditions
+
+![Conditions](./docs/conditions.png)
+
+5. Settings
+
+![Settings](./docs/settings.png)
+
 
 ## Uninstall application
 
-> Under construction...
-
 The Windows task needs to be deleted manually. Afterwards, the application can be uninstalled normally.
+
+1. Delete Windows task
+
+![Delete Windows task](./docs/delete-windows-task.png)
+
+2. Uninstall application
+
+![Uninstall Application](./docs/uninstall-application.png)
 
 # Project Setup
 
