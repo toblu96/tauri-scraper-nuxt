@@ -1,6 +1,7 @@
 use crate::server::store::AppState;
 use axum::extract::Query;
 use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Read;
@@ -51,6 +52,25 @@ pub async fn logs_index(
             .collect();
 
         // filter log lines according to filter params
+        if let Some(start_date) = &filter.start_date {
+            logs.retain(|log| {
+                if let Ok(time) = &log.time.parse::<DateTime<Utc>>() {
+                    time >= start_date
+                } else {
+                    false
+                }
+            })
+        }
+        if let Some(end_date) = &filter.end_date {
+            logs.retain(|log| {
+                if let Ok(time) = &log.time.parse::<DateTime<Utc>>() {
+                    time <= end_date
+                } else {
+                    false
+                }
+            })
+        }
+
         if let Some(level) = &filter.level {
             logs.retain(|log| log.level == format!("{:?}", level));
         }
@@ -113,6 +133,10 @@ pub struct LogFilterQuery {
     level: Option<LogLevels>,
     /// Filter log message for specific word pattern
     message: Option<String>,
+    /// Filter messages from this point in time (UTC) - example format: '2023-02-28T12:00:00Z'
+    start_date: Option<DateTime<Utc>>,
+    /// Filter messages to this point in time (UTC) - example format: '2023-02-28T12:00:00Z'
+    end_date: Option<DateTime<Utc>>,
 }
 
 /// Log levels
