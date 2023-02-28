@@ -1,29 +1,73 @@
 use crate::server::store::AppState;
+use axum::extract::Query;
 use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::Read;
 use std::sync::Arc;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 /// exports all routes from this module as router
 pub fn routes() -> Router<Arc<AppState>> {
     Router::new().route("/logs", get(logs_index))
 }
 
-/// Show application broker settings.
+/// Show application logs.
 ///
-/// Returns the configured application broker settings.
+/// Returns filtered log entries from the application.
 #[utoipa::path(
         get,
         context_path = "/api",
         path = "/logs",
         tag = "logs",
+        params(
+            LogFilterQuery
+        ),
         responses(
             (status = 200, description = "List log entries successfully", body = [Logs]),
+            (status = 404, description = "Could not find any server log files", body = ServerError, example = json!(ServerError::LogFileNotFound(String::from("No logfiles found on the server"))))
         )
     )]
-pub async fn logs_index(State(_state): State<Arc<AppState>>) -> impl IntoResponse {
-    let logs: Vec<Logs> = Vec::new();
-    (StatusCode::OK, Json(logs))
+pub async fn logs_index(
+    filter: Query<LogFilterQuery>,
+    State(_state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    // TODO: Add logic for rotation log files
+
+    // Read log file and add content to local vec
+    if let Ok(mut file) =
+        File::open("C:/ProgramData/Tauri/EH File Version Monitor/logs/application-logs.log")
+    {
+        let mut file_contents = String::new();
+        file.read_to_string(&mut file_contents)
+            .ok()
+            .expect("failed to read!");
+        let mut logs: Vec<Logs> = file_contents
+            .split("\n")
+            .filter_map(|s: &str| {
+                // only return successfully parsed lines
+                serde_json::from_str::<Logs>(&s).ok()
+            })
+            .collect();
+
+        // filter log lines according to filter params
+        if let Some(level) = &filter.level {
+            println!("{:?}", level);
+            logs.retain(|log| log.level == format!("{:?}", level));
+        }
+
+        // sort by date (desc)
+        logs.sort_by_key(|log| std::cmp::Reverse(log.time.clone()));
+
+        // return data
+        return (StatusCode::OK, Json(logs)).into_response();
+    }
+
+    (
+        StatusCode::NOT_FOUND,
+        Json("No logfiles found on the server"),
+    )
+        .into_response()
 }
 
 /// Logs schema.
@@ -50,4 +94,28 @@ pub struct Logs {
     thread: String,
     /// Current thread id
     thread_id: u16,
+}
+
+/// Server errors
+#[derive(Serialize, Deserialize, ToSchema)]
+pub enum ServerError {
+    /// No Logfile found on the server.
+    #[schema(example = "No logfiles found on the server")]
+    LogFileNotFound(String),
+}
+
+#[derive(Deserialize, IntoParams)]
+pub struct LogFilterQuery {
+    /// Filter log entries for specific log levels
+    level: Option<LogLevels>,
+}
+
+/// Log levels
+#[derive(Deserialize, ToSchema, Debug)]
+pub enum LogLevels {
+    DEBUG,
+    TRACE,
+    INFO,
+    WARN,
+    ERROR,
 }

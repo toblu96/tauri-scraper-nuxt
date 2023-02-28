@@ -32,7 +32,9 @@ pub async fn start(port: u16) {
                 router::settings::Broker, 
                 router::settings::BrokerUpdateParams, 
                 router::settings::DBError, 
-                router::logs::Logs
+                router::logs::Logs,
+                router::logs::ServerError,
+                router::logs::LogLevels
             )
         ),
         tags(
@@ -48,9 +50,11 @@ pub async fn start(port: u16) {
     let app_state = store::init_state();
 
     // build our application with a route
+    let mut doc = ApiDoc::openapi();
+    doc.info.title = String::from("EH Version Monitoring");
     let app = Router::new()
         // .merge(router::info::routes())
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", doc))
         .route(
             "/",
             get(|| async { Redirect::permanent(&"/swagger-ui".to_string()) }),
