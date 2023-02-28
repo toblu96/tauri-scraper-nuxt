@@ -52,8 +52,11 @@ pub async fn logs_index(
 
         // filter log lines according to filter params
         if let Some(level) = &filter.level {
-            println!("{:?}", level);
             logs.retain(|log| log.level == format!("{:?}", level));
+        }
+
+        if let Some(message) = &filter.message {
+            logs.retain(|log| log.message.to_lowercase().contains(&message.to_lowercase()));
         }
 
         // sort by date (desc)
@@ -108,6 +111,8 @@ pub enum ServerError {
 pub struct LogFilterQuery {
     /// Filter log entries for specific log levels
     level: Option<LogLevels>,
+    /// Filter log message for specific word pattern
+    message: Option<String>,
 }
 
 /// Log levels
