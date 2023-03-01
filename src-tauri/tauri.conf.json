@@ -87,7 +87,7 @@
         "height": 600,
         "resizable": true,
         "title": "EH File Version Monitor",
-        "width": 880
+        "width": 1000
       }
     ],
     "systemTray": {
