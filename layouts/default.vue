@@ -102,6 +102,7 @@ import {
   AdjustmentsHorizontalIcon,
   DocumentTextIcon,
   RectangleGroupIcon,
+  QueueListIcon,
 } from "@heroicons/vue/24/outline";
 
 interface IInfo {
@@ -127,6 +128,12 @@ const sidebarNavigation = ref([
     name: "Settings",
     href: "/settings",
     icon: AdjustmentsHorizontalIcon,
+    current: false,
+  },
+  {
+    name: "Logs",
+    href: "/logs",
+    icon: QueueListIcon,
     current: false,
   },
 ]);

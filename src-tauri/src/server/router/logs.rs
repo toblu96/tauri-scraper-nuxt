@@ -72,7 +72,12 @@ pub async fn logs_index(
         }
 
         if let Some(level) = &filter.level {
-            logs.retain(|log| log.level == format!("{:?}", level));
+            match level {
+                LogLevels::ALL => {}
+                _ => {
+                    logs.retain(|log| log.level == format!("{:?}", level));
+                }
+            }
         }
 
         if let Some(message) = &filter.message {
@@ -142,6 +147,7 @@ pub struct LogFilterQuery {
 /// Log levels
 #[derive(Deserialize, ToSchema, Debug)]
 pub enum LogLevels {
+    ALL,
     DEBUG,
     TRACE,
     INFO,
