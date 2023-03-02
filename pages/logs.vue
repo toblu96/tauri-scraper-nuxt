@@ -1,12 +1,13 @@
 <template>
   <div class="h-full bg-gray-100 py-8 px-6">
     <div class="space-y-6 bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
-      <PanelLogsFilter
-        class="sticky top-0"
-        @refresh="refresh()"
-        @filter-param-update="updateQueryFilter($event)"
-        :pending="pending"
-      />
+      <div class="sticky top-0 bg-red-300">
+        <PanelLogsFilter
+          @refresh="refresh()"
+          @filter-param-update="updateQueryFilter($event)"
+          :pending="pending"
+        />
+      </div>
 
       <!-- error -->
       <div class="rounded-md bg-red-50 p-4" v-if="error">
@@ -28,7 +29,17 @@
       </div>
 
       <div v-if="logData" class="space-y-1">
-        <div v-show="logData.length == 0">No logs found.</div>
+        <div class="mb-4 flex justify-between">
+          <div>
+            <span v-show="logData.length == 0"
+              >Update your search params..</span
+            >
+          </div>
+          <span
+            class="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-800"
+            >{{ logData.length }} log entries found</span
+          >
+        </div>
         <div
           v-for="log in logData"
           :key="log.time"
@@ -81,6 +92,12 @@ const updateQueryFilter = async (data: any) => {
 
   if (data.level && data.level != "") {
     filter += `&level=${data.level}`;
+  }
+
+  if (data.startDate && data.endDate) {
+    filter += `&start_date=${encodeURIComponent(
+      data.startDate
+    )}&end_date=${encodeURIComponent(data.endDate)}`;
   }
 
   queryFilter.value = filter;
