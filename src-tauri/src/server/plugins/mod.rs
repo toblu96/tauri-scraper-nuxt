@@ -1,6 +1,7 @@
 use super::{router::settings::Broker, store::AppState};
 use crate::server::router::files::Files;
 use chrono::{self, SecondsFormat};
+use log::{error, info};
 use microkv::MicroKV;
 use serde_json::json;
 use std::{
@@ -83,7 +84,10 @@ fn handle_file_change(
                             update_file_version(db, mqtt_client, path.clone(), version.clone());
                         }
                         Err(err) => {
-                            println!("Could not get file version due to: {err:?}");
+                            error!(
+                                "Could not get file version from path '{}' due to: {err:?}",
+                                &path
+                            );
                             update_file_error(db, path.clone(), err);
                         }
                     }
@@ -96,7 +100,10 @@ fn handle_file_change(
                             update_file_version(db, mqtt_client, path.clone(), hash.clone());
                         }
                         Err(err) => {
-                            println!("Could not get file version due to: {err:?}");
+                            error!(
+                                "Could not get file version from path '{}' due to: {err:?}",
+                                &path
+                            );
                             update_file_error(db, path.clone(), err);
                         }
                     }
@@ -132,6 +139,12 @@ fn update_file_version(
         let broker = lock.get_unwrap::<Broker>(DB_KEY);
         match broker {
             Ok(broker) => {
+                // log info about new file version
+                info!(
+                    "[{}] Got version change from file '{}' to version '{}'",
+                    &broker.device_id, &file.name, &version
+                );
+
                 if broker.connected {
                     // send mqtt message
                     let device_id = mqtt_client
@@ -163,13 +176,13 @@ fn update_file_version(
                     file.update_state = "MQTT broker connection failed".to_string()
                 }
             }
-            Err(err) => println!("Could not get broker data due to: {err:?}"),
+            Err(err) => error!("Could not get broker data due to: {err:?}"),
         }
     }
 
     // store data to local db
     if let Err(err) = lock.put("files", &files) {
-        println!("Could not write new file version to local DB: {err:?}")
+        error!("Could not write new file version to local DB: {err:?}")
     }
 }
 
@@ -192,6 +205,6 @@ fn update_file_error(db: &Arc<RwLock<MicroKV>>, path: String, error: String) {
 
     // store data to local db
     if let Err(err) = lock.put("files", &files) {
-        println!("Could not write new file version to local DB: {err:?}")
+        error!("Could not write new file version to local DB: {err:?}")
     }
 }

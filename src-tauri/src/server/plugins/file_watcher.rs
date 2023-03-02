@@ -4,6 +4,7 @@ use futures::{
     channel::mpsc::{channel, Receiver},
     SinkExt, StreamExt,
 };
+use log::{error, info, warn};
 use microkv::MicroKV;
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::{
@@ -36,7 +37,7 @@ impl FileWatcher {
         let watch_sender = sender.clone();
         let watcher_thread = tokio::spawn(async move {
             if let Err(e) = async_watch(watch_store, watch_sender).await {
-                println!("error: {:?}", e)
+                error!("Watcher thread error: {:?}", e)
             }
         });
 
@@ -67,7 +68,7 @@ impl FileWatcher {
             .get_unwrap::<Files>(DB_KEY)
             .unwrap();
         if current_files != new_files {
-            println!("refresh watchers");
+            info!("File watchers refreshed with new config.");
             // first drop all active file watchers and end task
             self.watcher_thread.write().unwrap().abort();
             // add new file watchers by starting them in new task
@@ -75,7 +76,7 @@ impl FileWatcher {
             let watch_sender = self.sender.clone();
             let thread = tokio::spawn(async move {
                 if let Err(e) = async_watch(watch_store, watch_sender).await {
-                    println!("error: {:?}", e)
+                    error!("Watcher thread panicked: {:?}", e)
                 }
             });
 
@@ -110,7 +111,7 @@ fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Resul
         move |res| {
             futures::executor::block_on(async {
                 if let Err(err) = tx.send(res).await {
-                    println!("Could not send value. {err:?}")
+                    error!("Watcher could not send value. {err:?}")
                 };
             })
         },
@@ -150,7 +151,7 @@ async fn async_watch(
                             if let Err(err) =
                                 watcher.watch(folder_path, RecursiveMode::NonRecursive)
                             {
-                                println!(
+                                warn!(
                                     "Could not add file watcher '{folder_path:?}' due to: {err:?}"
                                 );
                                 // update file state in case of error and disable watcher
@@ -163,12 +164,12 @@ async fn async_watch(
                     };
                 }
                 if let Err(err) = lock.put("files", &files) {
-                    println!("Could not update file state on local file db: {err:?}")
+                    error!("Could not update file state on local file db: {err:?}")
                 }
             }
             Err(err) => {
                 // if no file found. skip this part
-                println!("Could not add file watcher because there are no configured ones. {err:?}")
+                error!("Could not add file watcher because there are no configured ones. {err:?}")
             }
         }
     }
@@ -177,7 +178,7 @@ async fn async_watch(
     let db_name = crate::server::store::FILE_DB_NAME;
     let db_string = format!("{db_path}/{db_name}.kv");
     if let Err(err) = watcher.watch(Path::new(&db_string), RecursiveMode::Recursive) {
-        println!("Could not add local db watcher '{db_string}' due to: {err:?}");
+        error!("Could not add local db watcher '{db_string}' due to: {err:?}");
     };
     active_watch_files.push(db_string.clone());
 
@@ -205,15 +206,15 @@ async fn async_watch(
                                 .unwrap()
                                 .send(tmp_path_string.clone())
                             {
-                                println!("Could not send file change event due to: {err:?}")
+                                error!("Could not send file change event due to: {err:?}")
                             };
                         }),
                     ) {
-                        println!("debounce error: {:?}", err)
+                        error!("Debounce error: {:?}", err)
                     }
                 }
             }
-            Err(e) => println!("watch error: {:?}", e),
+            Err(e) => error!("watch error: {:?}", e),
         }
     }
 

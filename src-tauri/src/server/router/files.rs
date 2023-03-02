@@ -11,6 +11,7 @@ use axum::{
     Json, Router,
 };
 use futures::stream::{self, Stream};
+use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
@@ -52,7 +53,6 @@ pub async fn files_index(State(state): State<Arc<AppState>>) -> impl IntoRespons
         .cloned()
         .collect::<Vec<_>>();
 
-    // let files = db.read().unwrap().values().cloned().collect::<Vec<_>>();
     (StatusCode::OK, Json(files))
 }
 
@@ -107,6 +107,9 @@ pub async fn files_create(
     let mut files = lock.get_unwrap::<Files>(DB_KEY).unwrap();
 
     files.insert(file.id, file.clone());
+
+    // log new file entry
+    info!("[Files] New file added: {:?}", &file);
 
     if let Err(err) = lock.put(DB_KEY, &files) {
         return (
@@ -206,6 +209,9 @@ async fn files_update(
         if let Some(last_version) = input.last_version {
             file.last_version = last_version;
         }
+
+        // log changes
+        info!("[Files] File config changed to: {:?}", &file);
     } else {
         // no entry with this id found
         return (
@@ -263,6 +269,9 @@ async fn files_delete(
             .into_response();
     }
 
+    // log changes
+    info!("[Files] File with id '{id}' deleted.");
+
     // write to file db
     if let Err(err) = lock.put(DB_KEY, &files) {
         (
@@ -284,10 +293,8 @@ async fn files_delete(
 /// Returns all configured files for this application. Updates automatically using SSE.
 async fn files_index_sse(
     State(state): State<Arc<AppState>>,
-    TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+    TypedHeader(_user_agent): TypedHeader<headers::UserAgent>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    println!("`{}` connected", user_agent.as_str());
-
     // A `Stream` that repeats an event every second
     let stream = stream::repeat_with(move || {
         let files = state

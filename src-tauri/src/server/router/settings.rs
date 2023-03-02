@@ -11,6 +11,7 @@ use axum::{
     Json, Router,
 };
 use futures::stream::{self, Stream};
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -45,7 +46,7 @@ pub async fn settings_index(State(state): State<Arc<AppState>>) -> impl IntoResp
     match state.db.read().unwrap().get_unwrap::<Broker>(DB_KEY) {
         Ok(broker) => (StatusCode::OK, Json(broker)).into_response(),
         Err(err) => {
-            println!("Error: {err:?}");
+            error!("Error: {err:?}");
             (
                 StatusCode::NOT_FOUND,
                 Json(DBError::KeyNotFound(format!(
@@ -146,6 +147,9 @@ async fn settings_update(
             broker.connected = false;
             broker.state = "Reconnecting..".to_string();
 
+            // log changes
+            info!("[Settings] Broker settings changed to: {:?}", broker);
+
             // write to file db
             match lock.put(DB_KEY, &broker) {
                 Ok(()) => (StatusCode::OK, Json(broker)).into_response(),
@@ -161,7 +165,7 @@ async fn settings_update(
             }
         }
         Err(err) => {
-            println!("Error: {err:?}");
+            error!("Error: {err:?}");
             (
                 StatusCode::NOT_FOUND,
                 Json(DBError::KeyNotFound(format!(
@@ -179,10 +183,8 @@ async fn settings_update(
 /// Returns configuration for this application. Updates automatically using SSE.
 async fn settings_index_sse(
     State(state): State<Arc<AppState>>,
-    TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+    TypedHeader(_user_agent): TypedHeader<headers::UserAgent>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    println!("`{}` connected", user_agent.as_str());
-
     // A `Stream` that repeats an event every second
     let stream = stream::repeat_with(move || {
         let broker = state.db.read().unwrap().get_unwrap::<Broker>(DB_KEY);

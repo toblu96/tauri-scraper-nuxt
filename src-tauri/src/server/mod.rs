@@ -74,7 +74,7 @@ pub async fn start(port: u16) {
 
     // run it
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    info!("Server started, listening on {}", &addr);
+    info!("[Server] Server started, listening on {}", &addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await

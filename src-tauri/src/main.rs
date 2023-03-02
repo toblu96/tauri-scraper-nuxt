@@ -42,7 +42,7 @@ async fn main() {
             if let Err(err) = logger::init() {
                 println!("{err}");
             }
-            info!("Starting Http Server..");
+            info!("[Server] Starting Http Server..");
             server::start(cli.port).await;
         }
         false => {

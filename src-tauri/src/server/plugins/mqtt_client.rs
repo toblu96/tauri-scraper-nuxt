@@ -1,3 +1,4 @@
+use log::{debug, error, info, warn};
 use microkv::MicroKV;
 use rumqttc::{
     AsyncClient, ConnectionError, Event, EventLoop, Incoming, MqttOptions, Outgoing, QoS, TlsError,
@@ -52,7 +53,7 @@ impl MqttClient {
 
         // check if something has changed in config
         if current != new {
-            println!("Update broker connection");
+            info!("Update broker connection with new settings.");
             // stop current eventloop task
             self.event_loop_task.write().unwrap().abort();
 
@@ -78,9 +79,7 @@ impl MqttClient {
                 .publish(&topic, QoS::AtMostOnce, false, payload.to_string())
                 .await
             {
-                println!(
-                    "Could not publish mqtt message {payload:?} to topic {topic} due to: {err:?}"
-                )
+                warn!("Could not publish mqtt message {payload:?} to topic {topic} due to: {err:?}")
             }
         });
     }
@@ -114,7 +113,7 @@ fn create_mqtt_client(
             device_id = broker.device_id;
         }
         Err(err) => {
-            println!("Could not everrride default broker settings from local file db: {err:?}")
+            error!("Could not override default broker settings from local file db: {err:?}")
         }
     }
 
@@ -177,11 +176,11 @@ fn update_broker_state(store: &Arc<RwLock<MicroKV>>, connected: bool, state: &st
 
             // write to file db
             if let Err(err) = lock.put(DB_KEY, &broker.clone()) {
-                println!("Could not update broker state on local file db: {err:?}")
+                error!("Could not update broker state on local file db: {err:?}")
             }
         }
         Err(err) => {
-            println!("Could not read broker state from local file db: {err:?}");
+            error!("Could not read broker state from local file db: {err:?}");
             return;
         }
     }
@@ -199,23 +198,21 @@ pub fn spawn_eventloop_task(
                 // set client connected status
                 Ok(Event::Incoming(Incoming::PingResp))
                 | Ok(Event::Incoming(Incoming::ConnAck(_))) => {
-                    println!("Connection successful");
+                    debug!("[MQTT] Connection successful");
                     update_broker_state(&store, true, "Connected");
                 }
                 Ok(Event::Incoming(Incoming::Publish(p))) => {
-                    println!("Topic: {}, Payload: {:?}", p.topic, p.payload);
+                    info!("[MQTT] Topic: {}, Payload: {:?}", p.topic, p.payload);
                 }
                 Ok(Event::Incoming(i)) => {
-                    println!("Incoming = {:?}", i);
+                    info!("[MQTT] Incoming = {:?}", i);
                 }
                 Ok(Event::Outgoing(Outgoing::PingReq)) => {}
-                Ok(Event::Outgoing(o)) => println!("Outgoing = {:?}", o),
+                Ok(Event::Outgoing(o)) => debug!("Outgoing = {:?}", o),
                 Err(e) => {
-                    println!("Error = {:?}", e);
-
                     match e {
                         ConnectionError::MqttState(e) => {
-                            println!("Pause eventloop task due to: {}", e);
+                            warn!("[MQTT] Pause eventloop task due to: {}", e);
                             update_broker_state(&store, false, &e.to_string());
                             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                         }
@@ -223,19 +220,19 @@ pub fn spawn_eventloop_task(
                             // prevent filling log with unnecessary socket errors, e.g.:
                             // Tls(Io(Os { code: 11001, kind: Uncategorized, message: "Der angegebene Host ist unbekannt." }))
                             let error: std::io::Error = e;
-                            println!("End eventloop task due to: {}", error);
+                            warn!("[MQTT] End eventloop task due to: {}", error);
                             update_broker_state(&store, false, &error.to_string());
                             break;
                         }
                         ConnectionError::Tls(TlsError::DNSName(e)) => {
                             // Tls(DNSName(InvalidDnsNameError))
-                            println!("End eventloop task due to: {}", e);
+                            warn!("[MQTT] End eventloop task due to: {}", e);
                             update_broker_state(&store, false, &e.to_string());
                             break;
                         }
                         ConnectionError::Tls(e) => {
                             // catch other Tls errors
-                            println!("End eventloop task due to: {}", e);
+                            warn!("[MQTT] End eventloop task due to: {}", e);
                             update_broker_state(&store, false, &e.to_string());
                             break;
                         }
@@ -247,11 +244,11 @@ pub fn spawn_eventloop_task(
                             if error.kind() == ErrorKind::InvalidData
                                 && error.to_string() == "Promised boundary crossed: 256"
                             {
-                                println!("End eventloop task due to: {}", error);
+                                warn!("[MQTT] End eventloop task due to: {}", error);
                                 update_broker_state(&store, false, "Needs SSL/TLS enabled");
                                 break;
                             } else {
-                                println!("Pause eventloop task due to: {}", error);
+                                warn!("[MQTT] Pause eventloop task due to: {}", error);
                                 update_broker_state(&store, false, &error.to_string());
                                 tokio::time::sleep(std::time::Duration::from_secs(10)).await;
                             }
@@ -259,14 +256,16 @@ pub fn spawn_eventloop_task(
                         ConnectionError::ConnectionRefused(e) => {
                             // prevent filling log with unnecessary auth errors, e.g.:
                             // ConnectionRefused(NotAuthorized)
-                            println!("End eventloop task due to: {:?}", e);
+                            warn!("[MQTT] End eventloop task due to: {:?}", e);
                             update_broker_state(&store, false, &format!("{:?}", e));
                             break;
                         }
-                        ConnectionError::Timeout(_e) => {
+                        ConnectionError::Timeout(e) => {
+                            warn!("[MQTT] Timeout: {}", e);
                             update_broker_state(&store, false, "Timeout");
                         }
                         _ => {
+                            error!("[MQTT] Unspecified connection error");
                             update_broker_state(&store, false, "Connection Error");
                             break;
                         }
