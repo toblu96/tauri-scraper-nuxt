@@ -26,8 +26,8 @@
       </div>
     </div>
 
-    <div class="flex items-center">
-      <div class="hidden md:flex lg:w-96">
+    <div class="ml-4 flex items-center">
+      <div class="hidden translate-y-0.5 md:flex lg:w-96">
         <VueDatePicker
           range
           utc
