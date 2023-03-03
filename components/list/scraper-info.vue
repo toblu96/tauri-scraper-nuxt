@@ -58,7 +58,7 @@
             <div class="mt-2 sm:flex sm:justify-between">
               <div class="lg:flex">
                 <div
-                  class="flex w-full items-center text-sm text-gray-500 sm:w-52 sm:max-w-sm md:w-full"
+                  class="flex w-full items-center text-sm text-gray-500 sm:w-52 sm:max-w-sm 2xl:w-[32rem] 2xl:max-w-none"
                 >
                   <HashtagIcon
                     class="mr-1.5 h-5 w-5 flex-shrink-0 text-gray-400"
