@@ -1,4 +1,5 @@
 use sha2::{Digest, Sha256};
+use std::io::Read;
 
 /// Gets a file version from the file properties.
 ///
@@ -20,18 +21,23 @@ pub fn get_file_meta_hash(path: &str) -> Result<String, String> {
     let file = std::fs::File::options().read(true).write(false).open(&path);
 
     match file {
-        Ok(file) => {
-            let metadata = file.metadata();
-            match metadata {
-                Ok(meta) => {
-                    let mut hasher = Sha256::new();
-                    hasher.update(format!("{meta:?}"));
-                    let hash = hasher.finalize();
+        Ok(mut file) => {
+            // get file content
+            let mut file_content = Vec::new();
 
-                    Ok(format!("{:x}", hash))
-                }
-                Err(err) => Err(format!("[Get File Version] {}", err.to_string())),
+            if let Err(err) = file.read_to_end(&mut file_content) {
+                return Err(format!(
+                    "[Get File Version] Could not read file content: {}",
+                    err.to_string()
+                ));
             }
+
+            // hash file content
+            let mut hasher = Sha256::new();
+            hasher.update(format!("{file_content:?}"));
+            let hash = hasher.finalize();
+
+            Ok(format!("{:x}", hash))
         }
         Err(err) => Err(format!("[Get File Version] {}", err.to_string())),
     }
