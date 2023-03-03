@@ -37,6 +37,13 @@
             "args": [
               "schedtasks"
             ]
+          },
+          {
+            "name": "open-log-directory",
+            "cmd": "explorer",
+            "args": [
+              "C:\\ProgramData\\Tauri\\EH File Version Monitor\\logs"
+            ]
           }
         ],
         "sidecar": true

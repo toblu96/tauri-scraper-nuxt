@@ -74,6 +74,7 @@ watchEffect(async () => {
         </ul>
       </div>
       <ActionPanelSettingsBackend />
+      <ActionPanelSettingsLogs />
     </section>
     <section class="space-y-4 p-6 pb-0">
       <h2 class="text-lg font-medium leading-6 text-gray-900">
