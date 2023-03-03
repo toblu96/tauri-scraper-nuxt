@@ -15,8 +15,10 @@ use log4rs::{
 };
 
 pub static LOG_FILES_PATH: &str = "C:/ProgramData/Tauri/EH File Version Monitor/logs";
+pub static LOG_FILE_NAME: &str = "application-logs";
 
 pub fn init() -> Result<(), SetLoggerError> {
+    // TODO: make log level changeable and take it from the db - user can change it in the settings page
     let level = log::LevelFilter::Info;
 
     // logging to console
@@ -31,7 +33,7 @@ pub fn init() -> Result<(), SetLoggerError> {
     let window_size = 5; // files to keep
     let fixed_window_roller = FixedWindowRoller::builder()
         .build(
-            &format!("{LOG_FILES_PATH}/application-logs.{{}}.log"),
+            &format!("{LOG_FILES_PATH}/{LOG_FILE_NAME}.{{}}.log"),
             window_size,
         )
         .unwrap();
@@ -49,7 +51,7 @@ pub fn init() -> Result<(), SetLoggerError> {
                     RollingFileAppender::builder()
                         .encoder(Box::new(JsonEncoder::new()))
                         .build(
-                            &format!("{LOG_FILES_PATH}/application-logs.log"),
+                            &format!("{LOG_FILES_PATH}/{LOG_FILE_NAME}.log"),
                             Box::new(compound_policy),
                         )
                         .unwrap(),
