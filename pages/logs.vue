@@ -3,7 +3,7 @@
     <div class="space-y-6 bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
       <div class="sticky top-0 bg-red-300">
         <PanelLogsFilter
-          @refresh="refresh()"
+          @refresh=""
           @filter-param-update="updateQueryFilter($event)"
           :pending="pending"
         />
@@ -85,8 +85,12 @@ interface ILogMessage {
   level: string;
 }
 
+const pending = ref(true);
+
 const queryFilter = ref("");
 const updateQueryFilter = async (data: any) => {
+  pending.value = true;
+
   // concat query filter
   let filter = `?message=${data.searchString}`;
 
@@ -101,15 +105,44 @@ const updateQueryFilter = async (data: any) => {
   }
 
   queryFilter.value = filter;
-  await refresh();
+
+  // refresh eventsource filter params
+  refreshEventSource();
 };
 
-let {
-  data: logData,
-  error,
-  pending,
-  refresh,
-} = await useFetch<ILogMessage[]>(
+const refreshEventSource = () => {
+  eventSource.value.close();
+  let tmpEventSource = new EventSource(
+    `http://localhost:8000/api/logs/sse${queryFilter.value}`
+  );
+  // reset pending state in case of error (no log files found)
+  tmpEventSource.onopen = function (event) {
+    pending.value = false;
+  };
+  tmpEventSource.onmessage = function (event) {
+    try {
+      logData.value = JSON.parse(event.data);
+    } catch (error) {
+      console.error(`Could not update log lines: ${error}`);
+    }
+  };
+
+  eventSource.value = tmpEventSource;
+};
+
+// subscribe to active files from sse backend
+const logData = ref<ILogMessage[] | undefined>(undefined);
+const eventSource = ref(
+  new EventSource(`http://localhost:8000/api/logs/sse${queryFilter.value}`)
+);
+
+// close eventsource on page leave
+onUnmounted(() => {
+  eventSource.value.close();
+});
+
+// TODO: implement better error handling
+let { error } = await useFetch<ILogMessage[]>(
   () => `http://localhost:8000/api/logs${queryFilter.value}`
 );
 </script>
