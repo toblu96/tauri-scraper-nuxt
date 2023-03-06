@@ -13,21 +13,16 @@ use axum::{
     Json, Router,
 };
 use chrono::{DateTime, Utc};
-use futures::{
-    channel::mpsc::{channel, Receiver},
-    stream::Stream,
-    SinkExt, StreamExt,
-};
+use futures::stream::{self, Stream};
 use log::error;
-use log::warn;
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::fs::{read_dir, File};
 use std::io::Read;
-use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
+use tokio_stream::StreamExt as _;
 use utoipa::{IntoParams, ToSchema};
 
 /// exports all routes from this module as router
@@ -92,62 +87,27 @@ async fn logs_index_sse(
     filter: Query<LogFilterQuery>,
     TypedHeader(_user_agent): TypedHeader<headers::UserAgent>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    struct Guard {}
+    // need to actively pull new log entries due to implementation of log4rs
+    // save to file implemented with BufWriter -> logs gets added only after a certain amount of new entries
+    // https://github.com/estk/log4rs/blob/55446882c82c4a48e89917ed9ac62610a8fe797f/src/append/file.rs#L106
 
-    impl Drop for Guard {
-        fn drop(&mut self) {
-            println!("stream closed");
-        }
-    }
-
-    let stream = async_stream::stream! {
-        let _guard = Guard {};
-
-        // initially send data once
-        match get_log_file_names() {
+    let stream = tokio_stream::StreamExt::map(
+        stream::repeat_with(move || match get_log_file_names() {
             Ok(file_names) => match get_filtered_log_lines(file_names, filter.clone()) {
-                Ok(log_lines) => {
-                    yield Ok(Event::default().json_data(log_lines).unwrap());
-                }
+                Ok(log_lines) => Event::default().json_data(log_lines).unwrap(),
                 Err(err) => {
-                    error!("{err}")
+                    error!("{err}");
+                    Event::default()
                 }
             },
             Err(err) => {
-                error!("{err}")
+                error!("{err}");
+                Event::default()
             }
-        }
-
-        // open file watcher
-        let (mut watcher, mut rx) = async_watcher().unwrap();
-        if let Err(err) = watcher.watch(Path::new(LOG_FILES_PATH), RecursiveMode::NonRecursive) {
-            warn!("Could not add file watcher '{LOG_FILES_PATH:?}' due to: {err:?}");
-        };
-
-        // wait on updates
-        while let Some(res) = rx.next().await {
-            match res {
-                Ok(_event) => {
-                    match get_log_file_names() {
-                        Ok(file_names) => match get_filtered_log_lines(file_names, filter.clone()) {
-                            Ok(log_lines) => {
-                                yield Ok(Event::default().json_data(log_lines).unwrap());
-                            }
-                            Err(err) => {
-                                error!("{err}")
-                            }
-                        },
-                        Err(err) => {
-                            error!("{err}")
-                        }
-                    }
-                }
-                Err(e) => error!("watch error: {:?}", e),
-            }
-        }
-
-        // `_guard` is dropped
-    };
+        }),
+        Ok,
+    )
+    .throttle(Duration::from_secs(5));
 
     Sse::new(stream)
 }
@@ -297,24 +257,4 @@ fn get_filtered_log_lines(
 
     // return data
     Ok(log_lines)
-}
-
-/// Create new file watcher instance
-fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<notify::Event>>)>
-{
-    let (mut tx, rx) = channel(1);
-
-    // create watcher instance
-    let watcher = RecommendedWatcher::new(
-        move |res| {
-            futures::executor::block_on(async {
-                if let Err(err) = tx.send(res).await {
-                    error!("Watcher could not send value. {err:?}")
-                };
-            })
-        },
-        Config::default(),
-    )?;
-
-    Ok((watcher, rx))
 }
