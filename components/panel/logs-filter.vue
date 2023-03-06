@@ -56,16 +56,17 @@
           </select>
         </div>
         <div class="ml-6 h-6 w-px bg-gray-300" />
+
         <button
           type="button"
-          @click="$emit('refresh')"
-          :disabled="pending"
-          :class="pending && 'opacity-30'"
-          class="ml-6 rounded-md border border-transparent bg-indigo-600 py-2 px-3 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          title="Download filtered log as json"
+          @click="$emit('export-log-data')"
+          :disabled="pending || exporting"
+          :class="(pending || exporting) && 'cursor-wait opacity-30', exporting && 'animate-pulse'"
+          class="ml-6 inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
-          <ArrowPathIcon
-            class="h-5 w-5"
-            :class="pending && 'animate-spin'"
+          <DocumentArrowDownIcon
+            class="pointer-events-none h-5 w-5"
             aria-hidden="true"
           />
         </button>
@@ -76,11 +77,9 @@
 
 <script setup lang="ts">
 import {
-  EllipsisHorizontalIcon,
-  ArrowPathIcon,
+  DocumentArrowDownIcon,
   MagnifyingGlassIcon,
-} from "@heroicons/vue/20/solid";
-import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
+} from "@heroicons/vue/24/outline";
 import { debounce } from "ts-debounce";
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
@@ -124,7 +123,7 @@ const presetDatePickerRanges = ref([
 ]);
 
 const emit = defineEmits<{
-  (e: "refresh"): void;
+  (e: "export-log-data"): void;
   (
     e: "filterParamUpdate",
     value: {
@@ -137,6 +136,10 @@ const emit = defineEmits<{
 }>();
 const props = defineProps({
   pending: {
+    type: Boolean,
+    required: true,
+  },
+  exporting: {
     type: Boolean,
     required: true,
   },
