@@ -3,9 +3,10 @@
     <div class="space-y-6 bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
       <div class="sticky top-0 bg-red-300">
         <PanelLogsFilter
-          @refresh=""
+          @export-log-data="exportFilteredLogLines"
           @filter-param-update="updateQueryFilter($event)"
           :pending="pending"
+          :exporting="exporting"
         />
       </div>
 
@@ -28,7 +29,16 @@
         </div>
       </div>
 
-      <div v-if="logData" class="space-y-1">
+      <!-- skeleton loader -->
+      <div v-if="pending" class="animate-pulse space-y-2">
+        <div
+          class="mt-16 h-6 w-full border-l-4 border-gray-300 bg-gray-100"
+        ></div>
+        <div class="h-6 w-full border-l-4 border-gray-300 bg-gray-100"></div>
+      </div>
+
+      <!-- data -->
+      <div v-if="logData && !pending" class="space-y-1">
         <div class="mb-4 flex justify-between">
           <div>
             <span v-show="logData.length == 0"
@@ -78,6 +88,8 @@
 
 <script setup lang="ts">
 import { XCircleIcon } from "@heroicons/vue/20/solid";
+import { save } from "@tauri-apps/api/dialog";
+import { writeTextFile } from "@tauri-apps/api/fs";
 
 interface ILogMessage {
   time: string;
@@ -86,8 +98,18 @@ interface ILogMessage {
 }
 
 const pending = ref(true);
-
+const exporting = ref(false);
 const queryFilter = ref("");
+const logData = ref<ILogMessage[] | undefined>(undefined);
+const eventSource = ref(
+  new EventSource(`http://localhost:8000/api/logs/sse${queryFilter.value}`)
+);
+// TODO: implement better error handling
+let { error } = await useFetch<ILogMessage[]>(
+  () => `http://localhost:8000/api/logs${queryFilter.value}`
+);
+
+// handle query filter updates
 const updateQueryFilter = async (data: any) => {
   pending.value = true;
 
@@ -110,6 +132,7 @@ const updateQueryFilter = async (data: any) => {
   refreshEventSource();
 };
 
+// subscribe to active files from sse backend
 const refreshEventSource = () => {
   eventSource.value.close();
   let tmpEventSource = new EventSource(
@@ -130,19 +153,28 @@ const refreshEventSource = () => {
   eventSource.value = tmpEventSource;
 };
 
-// subscribe to active files from sse backend
-const logData = ref<ILogMessage[] | undefined>(undefined);
-const eventSource = ref(
-  new EventSource(`http://localhost:8000/api/logs/sse${queryFilter.value}`)
-);
+// export filtered logs
+const exportFilteredLogLines = async () => {
+  exporting.value = true;
+  const filePath = await save({
+    filters: [
+      {
+        name: "Application logs",
+        extensions: ["json"],
+      },
+    ],
+    defaultPath: `filtered-application-logs-${new Date().toLocaleDateString()}`,
+  });
+  // only save if user did not cancelled the selection
+  if (filePath) {
+    await writeTextFile(filePath, JSON.stringify(logData.value));
+  }
+
+  exporting.value = false;
+};
 
 // close eventsource on page leave
 onUnmounted(() => {
   eventSource.value.close();
 });
-
-// TODO: implement better error handling
-let { error } = await useFetch<ILogMessage[]>(
-  () => `http://localhost:8000/api/logs${queryFilter.value}`
-);
 </script>
